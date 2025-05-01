@@ -15,10 +15,15 @@ let yellow;
 let error;
 const fr = 24;
 
-let happyLauris;
+let happyLaurisImages = [];
 let randomFaces = [];
 let stopwatch;
 let trophy;
+
+// Function to get a random happy Lauris image
+function getRandomHappyLauris() {
+  return happyLaurisImages[Math.floor(random(happyLaurisImages.length))];
+}
 
 //matter.js setup
 const Engine = Matter.Engine,
@@ -36,9 +41,18 @@ let finishHintBody;
 function preload() {
   stopwatch = loadImage("assets/stopwatch.png");
   trophy = loadImage("assets/trophy.png");
-  happyLauris = loadImage("assets/faces/happy/happy_lauris_1.jpg");
   headingFont = loadFont("assets/sigmar_one.ttf");
   contextFont = loadFont("assets/open_sans.ttf");
+  
+  // Load happy Lauris images
+  for (let i = 1; i <= 5; i++) {
+    try {
+      const happyImage = loadImage(`assets/faces/happy/happy_lauris_${i}.jpg`);
+      happyLaurisImages.push(happyImage);
+    } catch (e) {
+      console.log(`Failed to load happy_lauris_${i}.jpg`);
+    }
+  }
   
   // Load random faces
   for (let i = 1; i <= 5; i++) {

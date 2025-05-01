@@ -19,11 +19,13 @@ class Level {
     this.time = level === 1 ? fr * 5 : fr * 2 + level * 8;
     this.count = 0;
     this.succeeded = false;
+    this.targetLauris = getRandomHappyLauris(); // Store the target image for this level
+    
     for (let row = 0; row < this.totalRow; row++) {
       this.faces.push([]);
       for (let column = 0; column < this.totalRow; column++) {
         if (row === this.randomRow && column === this.randomColumn) {
-          this.faces[row].push(happyLauris);
+          this.faces[row].push(this.targetLauris);
         } else {
           const randomFace = randomFaces[Math.floor(random(randomFaces.length))];
           this.faces[row].push(randomFace);
@@ -137,7 +139,7 @@ class Level {
       );
       imageMode(CENTER);
       image(
-        this.succeeded ? happyLauris : randomFaces[0],
+        this.succeeded ? this.targetLauris : randomFaces[0],
         centerX,
         centerY - 200,
         100,
