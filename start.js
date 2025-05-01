@@ -16,10 +16,10 @@ class Start {
     noStroke();
     fill(light);
     textSize(120);
-    text("THE", centerX, centerY - 600);
-    text("TEST", centerX, centerY - 250);
+    text("FIND", centerX, centerY - 600);
+    text("LAURIS", centerX, centerY - 250);
     textSize(240);
-    text("XAN", centerX, centerY - 460);
+    text("HAPPY", centerX, centerY - 460);
 
     // input container
     strokeWeight(5);
@@ -33,7 +33,7 @@ class Start {
     ellipseMode(CORNER);
     ellipse(centerX + 210, centerY + 410, 80, 80);
     imageMode(CORNER);
-    image(sendMsg, centerX + 220, centerY + 420, 60, 60);
+    image(trophy, centerX + 220, centerY + 420, 60, 60);
 
     if (this.count < 3 * fr) {
       this.typing.draw(centerX - 300, centerY);
@@ -46,7 +46,7 @@ class Start {
       this.msgReady.draw(centerX - 300, centerY);
       if (this.clicked !== true) {
         imageMode(CORNER);
-        image(smilingFace, centerX - 260, centerY + 420, 60, 60);
+        image(happyLauris, centerX - 260, centerY + 420, 60, 60);
         this.cursor.draw(centerX - 190, centerY + 420);
       }
       if (
@@ -122,10 +122,10 @@ class Message {
       textAlign(LEFT, TOP);
       fill(light);
       textSize(48);
-      text("Up for the test?", x + 30, yWithOffset + 5);
+      text("Ready to find Lauris?", x + 30, yWithOffset + 5);
     } else {
       imageMode(CORNER);
-      image(smilingFace, x + 20, yWithOffset + 10, 150, 150);
+      image(happyLauris, x + 20, yWithOffset + 10, 150, 150);
     }
     if (this.count < fr / 2) {
       this.count += 1;

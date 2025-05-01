@@ -1,33 +1,32 @@
 const failedCopy = [
-  "Come on!",
-  "You can do it!",
-  "I believe in you!",
-  "U r almost there!",
-  "So close!"
+  "Keep looking!",
+  "Not quite!",
+  "Almost there!",
+  "Look closer!",
+  "Try again!"
 ];
-const succeededCopy = ["Well done!", "Good job!", "Yay!", "Groovy!"];
+const succeededCopy = ["Found him!", "That's Lauris!", "Perfect!", "Well spotted!", "Great job!"];
 
 class Level {
   constructor(level) {
     this.level = level;
     this.lastLevel = 6;
     this.totalRow = 1 + level * 2;
-    this.emojiWidth = 80 - level * 5;
-    this.emojis = [];
+    this.faceSize = 100 - level * 8; // Adjusted size for face images
+    this.faces = [];
     this.randomRow = Math.floor(random(this.totalRow));
     this.randomColumn = Math.floor(random(this.totalRow));
     this.time = level === 1 ? fr * 5 : fr * 2 + level * 8;
     this.count = 0;
     this.succeeded = false;
     for (let row = 0; row < this.totalRow; row++) {
-      this.emojis.push([]);
+      this.faces.push([]);
       for (let column = 0; column < this.totalRow; column++) {
         if (row === this.randomRow && column === this.randomColumn) {
-          this.emojis[row].push(smilingFace);
+          this.faces[row].push(happyLauris);
         } else {
-          const randomEmoji =
-            emojiCollection[Math.floor(random(emojiCollection.length))];
-          this.emojis[row].push(randomEmoji);
+          const randomFace = randomFaces[Math.floor(random(randomFaces.length))];
+          this.faces[row].push(randomFace);
         }
       }
     }
@@ -40,34 +39,31 @@ class Level {
     textSize(60);
     const levelHeader =
       this.level === 1
-        ? "Which is Xan's"
+        ? "Find Happy"
         : this.level === this.lastLevel
-        ? "Level Evil"
+        ? "Level Final"
         : `Level ${this.level - 1}`;
     text(levelHeader, centerX, 200);
-    this.level === 1 && text("favourite emoji?", centerX, 260);
+    this.level === 1 && text("Lauris!", centerX, 260);
     if (this.level !== 1) this.timer();
     for (let row = 0; row < this.totalRow; row++) {
       for (let column = 0; column < this.totalRow; column++) {
         const x =
           centerX -
-          (this.emojiWidth * (1 + 3 * (Math.floor(this.totalRow / 2) - row))) /
+          (this.faceSize * (1 + 3 * (Math.floor(this.totalRow / 2) - row))) /
             2;
         const y =
           centerY -
-          (this.emojiWidth *
+          (this.faceSize *
             (1 + 3 * (Math.floor(this.totalRow / 2) - column))) /
             2;
         imageMode(CORNER);
-        image(this.emojis[row][column], x, y, this.emojiWidth, this.emojiWidth);
+        image(this.faces[row][column], x, y, this.faceSize, this.faceSize);
       }
     }
 
     if (this.succeeded) {
-      // show succeed hint
       this.hint();
-      console.log("succeed");
-      // proceed to next level
       if (this.level < this.lastLevel) {
         setTimeout(() => {
           game.setStage(this.level + 1);
@@ -76,14 +72,10 @@ class Level {
         }, 3000);
       }
     } else if (this.count < this.time) {
-      // listen to click smile face when there's still time and hasn't succeeded
-      this.smileFaceListener();
+      this.targetFaceListener();
       this.count += 1;
     } else {
-      // show failed hint
       this.hint();
-      console.log("failed");
-      // return to start screen
       setTimeout(() => {
         game.setStage(0);
         this.count = 0;
@@ -91,22 +83,22 @@ class Level {
       }, 3000);
     }
   }
-  smileFaceListener() {
+  targetFaceListener() {
     const x =
       centerX -
-      (this.emojiWidth *
+      (this.faceSize *
         (1 + 3 * (Math.floor(this.totalRow / 2) - this.randomRow))) /
         2;
     const y =
       centerY -
-      (this.emojiWidth *
+      (this.faceSize *
         (1 + 3 * (Math.floor(this.totalRow / 2) - this.randomColumn))) /
         2;
     if (
       currentTouch.x > x &&
-      currentTouch.x < x + this.emojiWidth &&
+      currentTouch.x < x + this.faceSize &&
       currentTouch.y > y &&
-      currentTouch.y < y + this.emojiWidth
+      currentTouch.y < y + this.faceSize
     ) {
       this.succeeded = true;
     }
@@ -133,7 +125,6 @@ class Level {
     if (this.level === this.lastLevel && this.succeeded) {
       finish.run();
     } else {
-      //container
       strokeWeight(5);
       stroke(light);
       fill(dark);
@@ -144,16 +135,14 @@ class Level {
         !this.succeeded || this.level === 1 ? 380 : 300,
         50
       );
-      //emoji
       imageMode(CENTER);
       image(
-        this.succeeded ? smilingFace : confusedFace,
+        this.succeeded ? happyLauris : randomFaces[0],
         centerX,
         centerY - 200,
         100,
         100
       );
-      //text
       textFont(headingFont);
       textAlign(CENTER, CENTER);
       noStroke();
@@ -161,12 +150,12 @@ class Level {
       textSize(60);
       if (this.level === 1) {
         text(
-          this.succeeded ? "Great! Now" : "You're not Xan!",
+          this.succeeded ? "Great! Now for" : "That's not Lauris!",
           centerX,
           centerY - 100
         );
         text(
-          this.succeeded ? "we're serious!" : "Who are you!",
+          this.succeeded ? "the challenge!" : "Keep looking!",
           centerX,
           centerY - 20
         );

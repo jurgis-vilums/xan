@@ -15,18 +15,10 @@ let yellow;
 let error;
 const fr = 24;
 
-let smilingFace;
-let shylySmilingFace;
-let coldSweat;
-let confusedFace;
-let sadFace;
+let happyLauris;
+let randomFaces = [];
 let stopwatch;
-let tearsOfJoy;
-let tree;
-let dog;
-let person;
 let trophy;
-let emojiCollection = [];
 
 //matter.js setup
 const Engine = Matter.Engine,
@@ -43,26 +35,15 @@ let finishHintBody;
 
 function preload() {
   stopwatch = loadImage("assets/stopwatch.png");
-  sadFace = loadImage("assets/sad_face.png");
-  smilingFace = loadImage("assets/smiling_face.png");
-  shylySmilingFace = loadImage("assets/shyly_smiling_face.png");
-  coldSweat = loadImage("assets/cold_sweat.png");
-  confusedFace = loadImage("assets/confused_face.png");
-  tearsOfJoy = loadImage("assets/tears_of_joy.png");
-  sendMsg = loadImage("assets/send_msg.png");
-  tree = loadImage("assets/tree.png");
-  dog = loadImage("assets/dog.png");
-  person = loadImage("assets/person.png");
   trophy = loadImage("assets/trophy.png");
+  happyLauris = loadImage("assets/faces/happy/happy_lauris_1.jpg");
   headingFont = loadFont("assets/sigmar_one.ttf");
   contextFont = loadFont("assets/open_sans.ttf");
-  emojiCollection = [
-    shylySmilingFace,
-    coldSweat,
-    confusedFace,
-    tearsOfJoy,
-    sadFace
-  ];
+  
+  // Load random faces
+  for (let i = 1; i <= 5; i++) {
+    randomFaces.push(loadImage(`assets/faces/random/random_face_${i}.jpg`));
+  }
 }
 
 function setup() {
