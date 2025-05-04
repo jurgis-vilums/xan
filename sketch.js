@@ -20,6 +20,7 @@ let happyLaurisImages = [];
 let randomFaces = [];
 let stopwatch;
 let trophy;
+let smilingFace;
 
 // Function to get a random happy Lauris image
 function getRandomHappyLauris() {
@@ -30,14 +31,6 @@ function getRandomHappyLauris() {
 const Engine = Matter.Engine,
   World = Matter.World,
   Bodies = Matter.Bodies;
-
-let engine;
-let world;
-let ground;
-let wallLeft;
-let wallRight;
-let trophyBody;
-let finishHintBody;
 
 function preload() {
   stopwatch = loadImage("assets/stopwatch.png");
@@ -59,6 +52,7 @@ function preload() {
   for (let i = 1; i <= 5; i++) {
     randomFaces.push(loadImage(`assets/faces/random/random_face_${i}.jpg`));
   }
+  smilingFace = loadImage("assets/faces/happy/happy_lauris_1.jpg");
 }
 
 function setup() {
@@ -97,7 +91,6 @@ function setup() {
   finish = new Finish();
   frameRate(fr);
   createCanvas(windowWidth, windowHeight);
-  finish.setup();
 }
 
 function draw() {

@@ -56,54 +56,10 @@ class Finish {
     //smile faces
     if (this.count > fr * 3 && this.count < fr * 10 && this.count % 2 === 0)
       this.smileFaces.push(new SmileFace());
-    Engine.update(engine);
     for (var i = 0; i < this.smileFaces.length; i++) {
       this.smileFaces[i].show();
     }
     this.count += 1;
-  }
-  setup() {
-    engine = Engine.create();
-    world = engine.world;
-    Engine.run(engine);
-    var options = {
-      isStatic: true
-    };
-    ground = Bodies.rectangle(
-      windowWidth / 2,
-      windowHeight,
-      windowWidth,
-      20,
-      options
-    );
-    wallLeft = Bodies.rectangle(0, windowHeight / 2, 20, windowHeight, options);
-    wallRight = Bodies.rectangle(
-      windowWidth,
-      windowHeight / 2,
-      20,
-      windowHeight,
-      options
-    );
-    trophyBody = Bodies.rectangle(
-      windowWidth / 2,
-      centerY - 425,
-      160,
-      244,
-      options
-    );
-    finishHintBody = Bodies.rectangle(
-      windowWidth / 2,
-      centerY - 100,
-      550,
-      400,
-      options
-    );
-
-    World.add(world, [ground, wallLeft, wallRight, trophyBody, finishHintBody]);
-    // World.add(world, wallLeft);
-    // World.add(world, wallRight);
-    // World.add(world, wallRight);
-    // World.add(world, wallRight);
   }
 }
 
@@ -120,6 +76,13 @@ class SmileFace {
       options
     );
     World.add(world, this.body);
+
+    // Replace Matter.js body with simple properties
+    this.x = int(random(20, windowWidth - 20));
+    this.y = 0;
+    this.size = 80;
+    this.vy = 0; // Vertical velocity
+    this.gravity = 0.6; // Simple gravity force
   }
 
   show() {
@@ -130,6 +93,20 @@ class SmileFace {
     rotate(angle);
     imageMode(CENTER);
     image(smilingFace, 0, 0, 80, 80);
+
+    // Update position based on simple physics
+    this.vy += this.gravity;
+    this.y += this.vy;
+
+    // Prevent falling through the bottom
+    if (this.y + this.size / 2 > windowHeight) {
+      this.y = windowHeight - this.size / 2;
+      this.vy *= -0.4; // Simple bounce effect
+    }
+
+    // Draw the image at the new position
+    imageMode(CENTER);
+    image(smilingFace, this.x, this.y, this.size, this.size);
 
     pop();
   }
