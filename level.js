@@ -12,14 +12,23 @@ class Level {
     this.level = level;
     this.lastLevel = 6;
     this.totalRow = 1 + level * 2;
-    this.faceSize = 100 - level * 8; // Adjusted size for face images
+    // Make face size responsive to screen size
+    const maxGridSize = min(windowWidth * 0.8, windowHeight * 0.6);
+    const baseFaceSize = maxGridSize / (this.totalRow * 1.5);
+    this.faceSize = min(100 - level * 8, baseFaceSize);
     this.faces = [];
     this.randomRow = Math.floor(random(this.totalRow));
     this.randomColumn = Math.floor(random(this.totalRow));
     this.time = level === 1 ? fr * 5 : fr * 2 + level * 8;
     this.count = 0;
     this.succeeded = false;
-    this.targetLauris = getRandomHappyLauris(); // Store the target image for this level
+    this.targetLauris = getRandomHappyLauris();
+    this.isPaused = false;
+    
+    // Calculate layout constants
+    this.headerHeight = windowHeight * 0.15;
+    this.timerHeight = 100;
+    this.gridMargin = windowHeight * 0.05;
     
     for (let row = 0; row < this.totalRow; row++) {
       this.faces.push([]);
@@ -33,21 +42,83 @@ class Level {
       }
     }
   }
+  drawPauseButton() {
+    const buttonSize = min(40, windowWidth * 0.03);
+    const padding = 20;
+    const x = windowWidth - buttonSize - padding;
+    const y = padding;
+    
+    // Check if mouse is over button
+    const isHovered = mouseX > x - buttonSize/2 && mouseX < x + buttonSize/2 &&
+                     mouseY > y - buttonSize/2 && mouseY < y + buttonSize/2;
+
+    // Draw button
+    noStroke();
+    fill(isHovered ? yellow : light);
+    circle(x, y, buttonSize);
+
+    // Draw pause/play icon
+    fill(dark);
+    if (this.isPaused) {
+      // Play triangle
+      const triangleSize = buttonSize * 0.4;
+      triangle(
+        x - triangleSize/3, y - triangleSize,
+        x - triangleSize/3, y + triangleSize,
+        x + triangleSize, y
+      );
+    } else {
+      // Pause bars
+      const barWidth = buttonSize * 0.15;
+      const barHeight = buttonSize * 0.5;
+      rect(x - barWidth*2, y - barHeight/2, barWidth, barHeight);
+      rect(x + barWidth, y - barHeight/2, barWidth, barHeight);
+    }
+
+    // Handle click
+    if (currentTouch.x && isHovered) {
+      this.isPaused = !this.isPaused;
+      currentTouch.reset();
+    }
+  }
   run() {
     textFont(headingFont);
     textAlign(CENTER, CENTER);
     noStroke();
     fill(light);
-    textSize(60);
+    
+    // Calculate header text size based on window size
+    const headerTextSize = min(60, windowWidth * 0.05);
+    textSize(headerTextSize);
+    
+    // Draw level header
     const levelHeader =
       this.level === 1
         ? "Find Happy"
         : this.level === this.lastLevel
         ? "Level Final"
         : `Level ${this.level - 1}`;
-    text(levelHeader, centerX, 200);
-    this.level === 1 && text("Lauris!", centerX, 260);
-    if (this.level !== 1) this.timer();
+    text(levelHeader, centerX, this.headerHeight);
+    
+    // Draw second line for level 1
+    if (this.level === 1) {
+      text("Lauris!", centerX, this.headerHeight + headerTextSize * 1.2);
+    }
+    
+    // Draw timer if not level 1
+    if (this.level !== 1) {
+      this.timer();
+    }
+
+    // Draw pause button
+    this.drawPauseButton();
+
+    // Calculate grid starting position
+    const gridStartY = this.level === 1 
+      ? this.headerHeight + headerTextSize * 2 + this.gridMargin
+      : this.timerHeight + this.gridMargin;
+    
+    // Draw the grid
     for (let row = 0; row < this.totalRow; row++) {
       for (let column = 0; column < this.totalRow; column++) {
         const x =
@@ -55,9 +126,9 @@ class Level {
           (this.faceSize * (1 + 3 * (Math.floor(this.totalRow / 2) - row))) /
             2;
         const y =
-          centerY -
+          gridStartY +
           (this.faceSize *
-            (1 + 3 * (Math.floor(this.totalRow / 2) - column))) /
+            (1 + 3 * column)) /
             2;
         imageMode(CORNER);
         image(this.faces[row][column], x, y, this.faceSize, this.faceSize);
@@ -75,7 +146,9 @@ class Level {
       }
     } else if (this.count < this.time) {
       this.targetFaceListener();
-      this.count += 1;
+      if (!this.isPaused) {
+        this.count += 1;
+      }
     } else {
       this.hint();
       setTimeout(() => {
@@ -86,15 +159,19 @@ class Level {
     }
   }
   targetFaceListener() {
+    const gridStartY = this.level === 1 
+      ? this.headerHeight + textSize() * 2 + this.gridMargin
+      : this.timerHeight + this.gridMargin;
+      
     const x =
       centerX -
       (this.faceSize *
         (1 + 3 * (Math.floor(this.totalRow / 2) - this.randomRow))) /
         2;
     const y =
-      centerY -
+      gridStartY +
       (this.faceSize *
-        (1 + 3 * (Math.floor(this.totalRow / 2) - this.randomColumn))) /
+        (1 + 3 * this.randomColumn)) /
         2;
     if (
       currentTouch.x > x &&
@@ -106,19 +183,20 @@ class Level {
     }
   }
   timer() {
+    const timerY = this.timerHeight;
     let warning = this.count / this.time > 3 / 4 ? true : false;
     strokeWeight(5);
     stroke(warning ? error : light);
     noFill();
-    rect(100, 100, windowWidth - 200, 10, 5);
+    rect(100, timerY, windowWidth - 200, 10, 5);
     stroke(warning ? error : light);
     fill(warning ? error : light);
-    rect(100, 100, (windowWidth - 200) * (1 - this.count / this.time), 10, 5);
+    rect(100, timerY, (windowWidth - 200) * (1 - this.count / this.time), 10, 5);
     imageMode(CENTER);
     image(
       stopwatch,
       100 + (windowWidth - 200) * (1 - this.count / this.time),
-      100,
+      timerY,
       50,
       50
     );
@@ -169,7 +247,6 @@ class Level {
           centerX,
           centerY - 100
         );
-        !this.succeeded && text("Try again!", centerX, centerY - 20);
       }
     }
   }

@@ -17,32 +17,40 @@ class Finish {
 
     // trophy
     imageMode(CENTER);
+    const trophyMaxSize = min(200, windowWidth * 0.15);
+    const trophyY = centerY - windowHeight * 0.25; // Moved trophy lower
+    
     if (this.count > fr && this.count <= fr * 2) {
+      const animatedSize = 80 + this.count * 2;
       image(
         trophy,
         centerX,
-        centerY - 425 + (2 * fr - this.count),
-        100 + this.count * 3,
-        100 + this.count * 3
+        trophyY + (2 * fr - this.count),
+        min(animatedSize, trophyMaxSize),
+        min(animatedSize, trophyMaxSize)
       );
     } else if (this.count > fr * 2) {
-      image(trophy, centerX, centerY - 425, 244, 244);
+      image(trophy, centerX, trophyY, trophyMaxSize, trophyMaxSize);
     }
+    
     //text
     textFont(headingFont);
     textAlign(CENTER, CENTER);
     noStroke();
     fill(light);
+    const textBaseY = centerY - windowHeight * 0.1; // Base position for text block
+    const textSize1 = min(60, windowWidth * 0.05);
+    const textSize2 = min(80, windowWidth * 0.06);
+    
     if (this.count < 2 * fr) {
-      textSize(60);
-      text("YAY!", centerX, centerY - 180);
-      text("YOU DID IT!", centerX, centerY - 80);
+      textSize(textSize1);
+      text("YAY!", centerX, textBaseY - 80);
+      text("YOU DID IT!", centerX, textBaseY);
     } else {
-      textSize(60);
-      text("YOU'RE", centerX, centerY - 220);
-      text("ENOUGH!", centerX, centerY - 10);
-      textSize(80);
-      text("XAN", centerX, centerY - 120);
+      textSize(textSize1);
+      text("YOU FOUND", centerX, textBaseY - 100);
+      text("HAPPY", centerX, textBaseY - 10);
+      text("LAURIS!", centerX, textBaseY + 80);
     }
 
     //smile faces

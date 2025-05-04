@@ -4,28 +4,24 @@ class Start {
     this.clicked = false;
     this.increment = PI / fr;
     this.startLauris = getRandomHappyLauris();
-    this.laurisY = centerY - 100; // Initial position for animation
-    this.laurisSize = 200; // Size for Lauris image
+    this.laurisY = min(centerY - 100, windowHeight * 0.4);
+    this.laurisSize = min(200, windowWidth * 0.2);
     this.buttonHovered = false;
   }
 
   drawPlayButton(x, y) {
-    // Check if mouse is over the button
-    const buttonWidth = 200;
-    const buttonHeight = 60;
+    const buttonWidth = min(200, windowWidth * 0.2);
+    const buttonHeight = min(60, windowHeight * 0.08);
     const isHovered = mouseX > x - buttonWidth/2 && mouseX < x + buttonWidth/2 &&
                      mouseY > y - buttonHeight/2 && mouseY < y + buttonHeight/2;
     
-    // Button background
-    noStroke();
     fill(isHovered ? yellow : dark);
     rect(x - buttonWidth/2, y - buttonHeight/2, buttonWidth, buttonHeight, 30);
     
-    // Button text
     textFont(headingFont);
     textAlign(CENTER, CENTER);
     fill(isHovered ? dark : light);
-    textSize(32);
+    textSize(min(32, windowWidth * 0.03));
     text("PLAY", x, y);
 
     this.buttonHovered = isHovered;
@@ -33,56 +29,53 @@ class Start {
   }
 
   run() {
-    background(grass); // Clear background each frame
+    background(grass);
 
-    // Title with shadow effect
     textFont(headingFont);
     textAlign(CENTER, CENTER);
+    const titleSize = min(80, windowWidth * 0.08);
     
-    // Shadow
+    const titleY1 = windowHeight * 0.2;
+    const titleY2 = titleY1 + titleSize * 1.2;
+    
     fill(darker);
-    textSize(80);
-    text("FIND HAPPY", centerX + 4, centerY - 300 + 4);
-    text("LAURIS", centerX + 4, centerY - 220 + 4);
+    textSize(titleSize);
+    text("FIND HAPPY", centerX + 4, titleY1 + 4);
+    text("LAURIS", centerX + 4, titleY2 + 4);
     
-    // Main text
     fill(light);
-    textSize(80);
-    text("FIND HAPPY", centerX, centerY - 300);
-    text("LAURIS", centerX, centerY - 220);
+    textSize(titleSize);
+    text("FIND HAPPY", centerX, titleY1);
+    text("LAURIS", centerX, titleY2);
 
-    // Lauris image with bounce animation
     const bounceOffset = sin(this.count * 0.05) * 20;
     imageMode(CENTER);
     
     if (!this.clicked) {
-      // Draw Lauris image with bounce effect
       image(this.startLauris, 
             centerX, 
-            this.laurisY + bounceOffset, 
+            this.laurisY + bounceOffset + 150, 
             this.laurisSize, 
             this.laurisSize);
     } else {
-      // Zoom out animation when clicked
       const scale = 1 - (this.count - this.clickedAt) * 0.05;
       if (scale > 0) {
         image(this.startLauris, 
               centerX, 
-              this.laurisY + bounceOffset, 
+              this.laurisY + bounceOffset + 150, 
               this.laurisSize * scale, 
               this.laurisSize * scale);
       }
     }
 
-    // Draw play button and handle interaction
     if (!this.clicked) {
-      const isHovered = this.drawPlayButton(centerX, centerY + 200);
+      const buttonY = min(centerY + 200, windowHeight * 0.8);
+      const isHovered = this.drawPlayButton(centerX, buttonY);
       
       if (currentTouch.x && isHovered) {
         this.clicked = true;
         this.clickedAt = this.count;
         
-        // Start game after animation
         setTimeout(() => {
           game.setStage(1);
         }, 1000);
