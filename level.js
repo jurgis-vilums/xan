@@ -34,6 +34,23 @@ class Level {
     this.timerHeight = isMobile ? 60 : 80;
     this.gridMargin = isMobile ? windowHeight * 0.15 : windowHeight * 0.18;
     
+    // Precompute grid positions to avoid recalculating each frame
+    this.gridPositions = [];
+    const gridStartY = this.level === 1 
+      ? this.headerHeight + (isMobile ? windowWidth * 0.06 : windowWidth * 0.05) * 1.2 * 2 + this.gridMargin
+      : this.timerHeight + this.gridMargin;
+    
+    const spacing = isMobile ? 3.5 : 3;
+    
+    for (let row = 0; row < this.totalRow; row++) {
+      this.gridPositions.push([]);
+      for (let column = 0; column < this.totalRow; column++) {
+        const x = centerX - (this.faceSize * (1 + spacing * (Math.floor(this.totalRow / 2) - row))) / 2;
+        const y = gridStartY + (this.faceSize * (1 + spacing * column)) / 2;
+        this.gridPositions[row].push({x, y});
+      }
+    }
+    
     for (let row = 0; row < this.totalRow; row++) {
       this.faces.push([]);
       for (let column = 0; column < this.totalRow; column++) {
@@ -78,27 +95,12 @@ class Level {
       this.timer();
     }
 
-    // Calculate grid starting position
-    const gridStartY = this.level === 1 
-      ? this.headerHeight + headerTextSize * 2 + this.gridMargin
-      : this.timerHeight + this.gridMargin;
-    
-    // Draw the grid with consistent spacing
-    const spacing = isMobile ? 3.5 : 3;
-    
+    // Draw the grid with cached positions
     for (let row = 0; row < this.totalRow; row++) {
       for (let column = 0; column < this.totalRow; column++) {
-        const x =
-          centerX -
-          (this.faceSize * (1 + spacing * (Math.floor(this.totalRow / 2) - row))) /
-            2;
-        const y =
-          gridStartY +
-          (this.faceSize *
-            (1 + spacing * column)) /
-            2;
+        const pos = this.gridPositions[row][column];
         imageMode(CORNER);
-        image(this.faces[row][column], x, y, this.faceSize, this.faceSize);
+        image(this.faces[row][column], pos.x, pos.y, this.faceSize, this.faceSize);
       }
     }
 
@@ -113,7 +115,7 @@ class Level {
       }
     } else if (this.count < this.time) {
       this.targetFaceListener();
-      this.count += 1;
+      this.count += deltaTime; // Use deltaTime instead of fixed increment
     } else {
       this.hint();
       setTimeout(() => {
@@ -123,27 +125,13 @@ class Level {
       }, 3000);
     }
   }
+  
   targetFaceListener() {
     if (!currentTouch.x || !currentTouch.y) return;
 
-    const gridStartY = this.level === 1 
-      ? this.headerHeight + textSize() * 2 + this.gridMargin
-      : this.timerHeight + this.gridMargin;
+    // Use the precomputed position for the target face
+    const pos = this.gridPositions[this.randomRow][this.randomColumn];
     
-    const spacing = isMobile ? 3.5 : 3;
-
-    // Calculate the position of the target face
-    const x =
-      centerX -
-      (this.faceSize *
-        (1 + spacing * (Math.floor(this.totalRow / 2) - this.randomRow))) /
-        2;
-    const y =
-      gridStartY +
-      (this.faceSize *
-        (1 + spacing * this.randomColumn)) /
-        2;
-
     // Add touch padding based on face size and device
     const touchPadding = isMobile ? this.faceSize * 0.3 : this.faceSize * 0.1;
     
@@ -152,10 +140,10 @@ class Level {
     const touchY = currentTouch.y;
     
     const touchArea = {
-      left: x - touchPadding,
-      right: x + this.faceSize + touchPadding,
-      top: y - touchPadding,
-      bottom: y + this.faceSize + touchPadding
+      left: pos.x - touchPadding,
+      right: pos.x + this.faceSize + touchPadding,
+      top: pos.y - touchPadding,
+      bottom: pos.y + this.faceSize + touchPadding
     };
 
     if (
@@ -168,6 +156,7 @@ class Level {
       currentTouch.reset();
     }
   }
+  
   timer() {
     const timerY = this.timerHeight;
     const timerWidth = isMobile ? windowWidth - 100 : windowWidth - 200;

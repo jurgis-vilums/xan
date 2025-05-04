@@ -15,6 +15,8 @@ let light;
 let yellow;
 let error;
 const fr = 24;
+let lastFrameTime = 0;
+let deltaTime = 0;
 
 let happyLaurisImages = [];
 let randomFaces = [];
@@ -89,11 +91,17 @@ function setup() {
   level1 = new Level(1);
   game = new Game();
   finish = new Finish();
-  frameRate(fr);
+  frameRate(isMobile ? 30 : 60); // Higher target framerate, but we'll use deltaTime for animations
+  lastFrameTime = millis();
   createCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
+  // Calculate deltaTime for smooth animations regardless of actual frame rate
+  const currentTime = millis();
+  deltaTime = (currentTime - lastFrameTime) / (1000 / fr); // Normalize to target frame rate
+  lastFrameTime = currentTime;
+  
   background(grass);
   // level1.hint();
   // level5.timer();

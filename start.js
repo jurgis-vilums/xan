@@ -62,7 +62,7 @@ class Start {
       if (scale > 0) {
         image(this.startLauris, 
               centerX, 
-              this.laurisY + bounceOffset + 150, 
+              this.laurisY + bounceOffset, 
               this.laurisSize * scale, 
               this.laurisSize * scale);
       }
@@ -82,7 +82,7 @@ class Start {
       }
     }
 
-    this.count++;
+    this.count += deltaTime;
   }
 }
 
@@ -102,9 +102,10 @@ class Typing {
     this.circle(x, y, 0);
     this.circle(x, y, 1);
     this.circle(x, y, 2);
-    this.count += 2;
-    if (this.count % fr === 0) {
+    this.count += deltaTime * 2;
+    if (this.count >= fr) {
       this.turn += 1;
+      this.count = this.count % fr;
     }
   }
   circle(x, y, order) {
@@ -144,7 +145,7 @@ class Message {
       image(this.messageLauris, x + 20, yWithOffset + 10, 150, 150);
     }
     if (this.count < fr / 2) {
-      this.count += 1;
+      this.count += deltaTime;
     }
   }
 }
@@ -158,6 +159,6 @@ class Cursor {
       stroke(yellow);
       line(x, y, x, y + 60);
     }
-    this.count += 1;
+    this.count += deltaTime;
   }
 }
