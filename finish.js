@@ -65,49 +65,24 @@ class Finish {
 
 class SmileFace {
   constructor() {
-    var options = {
-      // friction: 0.3,
-      // restitution: 0.6
-    };
-    this.body = Bodies.circle(
-      int(random(20, windowWidth - 20)),
-      0,
-      40,
-      options
-    );
-    World.add(world, this.body);
-
-    // Replace Matter.js body with simple properties
+    // Initialize simple physics properties without Matter.js
     this.x = int(random(20, windowWidth - 20));
     this.y = 0;
     this.size = 80;
-    this.vy = 0; // Vertical velocity
-    this.gravity = 0.6; // Simple gravity force
+    this.vy = 0;
+    this.gravity = 0.6;
   }
 
   show() {
-    var pos = this.body.position;
-    var angle = this.body.angle;
-    push();
-    translate(pos.x, pos.y);
-    rotate(angle);
-    imageMode(CENTER);
-    image(smilingFace, 0, 0, 80, 80);
-
     // Update position based on simple physics
     this.vy += this.gravity;
     this.y += this.vy;
-
-    // Prevent falling through the bottom
+    // Prevent falling through the bottom with bounce effect
     if (this.y + this.size / 2 > windowHeight) {
       this.y = windowHeight - this.size / 2;
-      this.vy *= -0.4; // Simple bounce effect
+      this.vy *= -0.4;
     }
-
-    // Draw the image at the new position
     imageMode(CENTER);
     image(smilingFace, this.x, this.y, this.size, this.size);
-
-    pop();
   }
 }
