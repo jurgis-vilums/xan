@@ -57,29 +57,29 @@ class Level {
     fill(isHovered ? yellow : light);
     circle(x, y, buttonSize);
 
-    // Draw pause/play icon
-    fill(dark);
-    if (this.isPaused) {
-      // Play triangle
-      const triangleSize = buttonSize * 0.4;
-      triangle(
-        x - triangleSize/3, y - triangleSize,
-        x - triangleSize/3, y + triangleSize,
-        x + triangleSize, y
-      );
-    } else {
-      // Pause bars
-      const barWidth = buttonSize * 0.15;
-      const barHeight = buttonSize * 0.5;
-      rect(x - barWidth*2, y - barHeight/2, barWidth, barHeight);
-      rect(x + barWidth, y - barHeight/2, barWidth, barHeight);
-    }
+    // // Draw pause/play icon
+    // fill(dark);
+    // if (this.isPaused) {
+    //   // Play triangle
+    //   const triangleSize = buttonSize * 0.4;
+    //   triangle(
+    //     x - triangleSize/3, y - triangleSize,
+    //     x - triangleSize/3, y + triangleSize,
+    //     x + triangleSize, y
+    //   );
+    // } else {
+    //   // Pause bars
+    //   const barWidth = buttonSize * 0.15;
+    //   const barHeight = buttonSize * 0.5;
+    //   rect(x - barWidth*2, y - barHeight/2, barWidth, barHeight);
+    //   rect(x + barWidth, y - barHeight/2, barWidth, barHeight);
+    // }
 
-    // Handle click
-    if (currentTouch.x && isHovered) {
-      this.isPaused = !this.isPaused;
-      currentTouch.reset();
-    }
+    // // Handle click
+    // if (currentTouch.x && isHovered) {
+    //   this.isPaused = !this.isPaused;
+    //   currentTouch.reset();
+    // }
   }
   run() {
     textFont(headingFont);
