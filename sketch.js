@@ -5,6 +5,7 @@ let game;
 let start;
 let level;
 let finish;
+let isMobile;
 
 let darker;
 let dark;
@@ -61,6 +62,20 @@ function preload() {
 }
 
 function setup() {
+  // Check if device is mobile
+  isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // Prevent default touch behaviors
+  if (isMobile) {
+    document.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+  }
+  
   centerX = windowWidth / 2;
   centerY = windowHeight / 2;
   darker = color("#3B3C41");
@@ -116,7 +131,64 @@ function draw() {
   }
 }
 
+function touchStarted() {
+  // For both mouse and touch, use actual screen coordinates
+  const x = mouseX;
+  const y = mouseY;
+  
+  if (x !== undefined && y !== undefined) {
+    currentTouch.set(x, y);
+  }
+  return false;
+}
+
+function touchMoved() {
+  return false;
+}
+
 function touchEnded() {
-  currentTouch.set(mouseX, mouseY);
   setTimeout(() => currentTouch.reset(), 50);
+  return false;
+}
+
+function mousePressed() {
+  touchStarted();
+  return false;
+}
+
+function mouseReleased() {
+  touchEnded();
+  return false;
+}
+
+function windowResized() {
+  // Handle window resize and orientation changes
+  resizeCanvas(windowWidth, windowHeight);
+  centerX = windowWidth / 2;
+  centerY = windowHeight / 2;
+  
+  // Recreate current level/stage to adjust sizes
+  switch (game.getStage()) {
+    case 0:
+      start = new Start();
+      break;
+    case 1:
+      level1 = new Level(1);
+      break;
+    case 2:
+      level2 = new Level(2);
+      break;
+    case 3:
+      level3 = new Level(3);
+      break;
+    case 4:
+      level4 = new Level(4);
+      break;
+    case 5:
+      level5 = new Level(5);
+      break;
+    case 6:
+      level6 = new Level(6);
+      break;
+  }
 }

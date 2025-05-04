@@ -12,10 +12,15 @@ class Level {
     this.level = level;
     this.lastLevel = 6;
     this.totalRow = 1 + level * 2;
-    // Make face size responsive to screen size
+    
+    // Make face size responsive to screen size and device type
     const maxGridSize = min(windowWidth * 0.8, windowHeight * 0.6);
     const baseFaceSize = maxGridSize / (this.totalRow * 1.5);
-    this.faceSize = min(100 - level * 8, baseFaceSize);
+    
+    // Minimum face size
+    const minFaceSize = isMobile ? 60 : 40;
+    this.faceSize = max(minFaceSize, min(100 - level * 8, baseFaceSize));
+    
     this.faces = [];
     this.randomRow = Math.floor(random(this.totalRow));
     this.randomColumn = Math.floor(random(this.totalRow));
@@ -23,12 +28,11 @@ class Level {
     this.count = 0;
     this.succeeded = false;
     this.targetLauris = getRandomHappyLauris();
-    this.isPaused = false;
     
-    // Calculate layout constants
-    this.headerHeight = windowHeight * 0.15;
-    this.timerHeight = 100;
-    this.gridMargin = windowHeight * 0.05;
+    // Calculate layout constants - adjusted for mobile
+    this.headerHeight = isMobile ? windowHeight * 0.1 : windowHeight * 0.12;
+    this.timerHeight = isMobile ? 60 : 80;
+    this.gridMargin = isMobile ? windowHeight * 0.15 : windowHeight * 0.18;
     
     for (let row = 0; row < this.totalRow; row++) {
       this.faces.push([]);
@@ -42,53 +46,17 @@ class Level {
       }
     }
   }
-  drawPauseButton() {
-    const buttonSize = min(40, windowWidth * 0.03);
-    const padding = 20;
-    const x = windowWidth - buttonSize - padding;
-    const y = padding;
-    
-    // Check if mouse is over button
-    const isHovered = mouseX > x - buttonSize/2 && mouseX < x + buttonSize/2 &&
-                     mouseY > y - buttonSize/2 && mouseY < y + buttonSize/2;
 
-    // Draw button
-    noStroke();
-    fill(isHovered ? yellow : light);
-    circle(x, y, buttonSize);
-
-    // // Draw pause/play icon
-    // fill(dark);
-    // if (this.isPaused) {
-    //   // Play triangle
-    //   const triangleSize = buttonSize * 0.4;
-    //   triangle(
-    //     x - triangleSize/3, y - triangleSize,
-    //     x - triangleSize/3, y + triangleSize,
-    //     x + triangleSize, y
-    //   );
-    // } else {
-    //   // Pause bars
-    //   const barWidth = buttonSize * 0.15;
-    //   const barHeight = buttonSize * 0.5;
-    //   rect(x - barWidth*2, y - barHeight/2, barWidth, barHeight);
-    //   rect(x + barWidth, y - barHeight/2, barWidth, barHeight);
-    // }
-
-    // // Handle click
-    // if (currentTouch.x && isHovered) {
-    //   this.isPaused = !this.isPaused;
-    //   currentTouch.reset();
-    // }
-  }
   run() {
     textFont(headingFont);
     textAlign(CENTER, CENTER);
     noStroke();
     fill(light);
     
-    // Calculate header text size based on window size
-    const headerTextSize = min(60, windowWidth * 0.05);
+    // Calculate header text size based on window size and device
+    const headerTextSize = isMobile 
+      ? min(48, windowWidth * 0.06)
+      : min(60, windowWidth * 0.05);
     textSize(headerTextSize);
     
     // Draw level header
@@ -110,25 +78,24 @@ class Level {
       this.timer();
     }
 
-    // Draw pause button
-    this.drawPauseButton();
-
     // Calculate grid starting position
     const gridStartY = this.level === 1 
       ? this.headerHeight + headerTextSize * 2 + this.gridMargin
       : this.timerHeight + this.gridMargin;
     
-    // Draw the grid
+    // Draw the grid with consistent spacing
+    const spacing = isMobile ? 3.5 : 3;
+    
     for (let row = 0; row < this.totalRow; row++) {
       for (let column = 0; column < this.totalRow; column++) {
         const x =
           centerX -
-          (this.faceSize * (1 + 3 * (Math.floor(this.totalRow / 2) - row))) /
+          (this.faceSize * (1 + spacing * (Math.floor(this.totalRow / 2) - row))) /
             2;
         const y =
           gridStartY +
           (this.faceSize *
-            (1 + 3 * column)) /
+            (1 + spacing * column)) /
             2;
         imageMode(CORNER);
         image(this.faces[row][column], x, y, this.faceSize, this.faceSize);
@@ -146,9 +113,7 @@ class Level {
       }
     } else if (this.count < this.time) {
       this.targetFaceListener();
-      if (!this.isPaused) {
-        this.count += 1;
-      }
+      this.count += 1;
     } else {
       this.hint();
       setTimeout(() => {
@@ -159,46 +124,70 @@ class Level {
     }
   }
   targetFaceListener() {
+    if (!currentTouch.x || !currentTouch.y) return;
+
     const gridStartY = this.level === 1 
       ? this.headerHeight + textSize() * 2 + this.gridMargin
       : this.timerHeight + this.gridMargin;
-      
+    
+    const spacing = isMobile ? 3.5 : 3;
+
+    // Calculate the position of the target face
     const x =
       centerX -
       (this.faceSize *
-        (1 + 3 * (Math.floor(this.totalRow / 2) - this.randomRow))) /
+        (1 + spacing * (Math.floor(this.totalRow / 2) - this.randomRow))) /
         2;
     const y =
       gridStartY +
       (this.faceSize *
-        (1 + 3 * this.randomColumn)) /
+        (1 + spacing * this.randomColumn)) /
         2;
+
+    // Add touch padding based on face size and device
+    const touchPadding = isMobile ? this.faceSize * 0.3 : this.faceSize * 0.1;
+    
+    // Check if touch is within the target area
+    const touchX = currentTouch.x;
+    const touchY = currentTouch.y;
+    
+    const touchArea = {
+      left: x - touchPadding,
+      right: x + this.faceSize + touchPadding,
+      top: y - touchPadding,
+      bottom: y + this.faceSize + touchPadding
+    };
+
     if (
-      currentTouch.x > x &&
-      currentTouch.x < x + this.faceSize &&
-      currentTouch.y > y &&
-      currentTouch.y < y + this.faceSize
+      touchX >= touchArea.left &&
+      touchX <= touchArea.right &&
+      touchY >= touchArea.top &&
+      touchY <= touchArea.bottom
     ) {
       this.succeeded = true;
+      currentTouch.reset();
     }
   }
   timer() {
     const timerY = this.timerHeight;
+    const timerWidth = isMobile ? windowWidth - 100 : windowWidth - 200;
+    const timerX = (windowWidth - timerWidth) / 2;
+    
     let warning = this.count / this.time > 3 / 4 ? true : false;
     strokeWeight(5);
     stroke(warning ? error : light);
     noFill();
-    rect(100, timerY, windowWidth - 200, 10, 5);
+    rect(timerX, timerY, timerWidth, 10, 5);
     stroke(warning ? error : light);
     fill(warning ? error : light);
-    rect(100, timerY, (windowWidth - 200) * (1 - this.count / this.time), 10, 5);
+    rect(timerX, timerY, timerWidth * (1 - this.count / this.time), 10, 5);
     imageMode(CENTER);
     image(
       stopwatch,
-      100 + (windowWidth - 200) * (1 - this.count / this.time),
+      timerX + timerWidth * (1 - this.count / this.time),
       timerY,
-      50,
-      50
+      isMobile ? 40 : 50,
+      isMobile ? 40 : 50
     );
   }
   hint() {
