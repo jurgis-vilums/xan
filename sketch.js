@@ -39,7 +39,7 @@ function preload() {
   contextFont = loadFont("assets/open_sans.ttf");
   
   // Load happy Lauris images
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 10; i++) {
     try {
       const happyImage = loadImage(`assets/faces/happy/happy_lauris_${i}.jpg`);
       happyLaurisImages.push(happyImage);
@@ -49,7 +49,7 @@ function preload() {
   }
   
   // Load random faces
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 10; i++) {
     randomFaces.push(loadImage(`assets/faces/random/random_face_${i}.jpg`));
   }
   smilingFace = loadImage("assets/faces/happy/happy_lauris_1.jpg");
