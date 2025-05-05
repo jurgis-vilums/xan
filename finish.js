@@ -59,7 +59,7 @@ class Finish {
     for (var i = 0; i < this.smileFaces.length; i++) {
       this.smileFaces[i].show();
     }
-    this.count += 1;
+    this.count += 1; 
   }
 }
 
