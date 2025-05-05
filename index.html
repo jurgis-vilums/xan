@@ -1,18 +1,923 @@
-<html>
-  <head>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.0.0/lib/p5.js"></script>
-    <script src="matter.min.js"></script>
-    <script src="sketch.js"></script>
-    <script src="touch.js"></script>
-    <script src="start.js"></script>
-    <script src="level.js"></script>
-    <script src="finish.js"></script>
-    <script src="game.js"></script>
-  </head>
-  <body></body>
-  <style>
-    body {
-      margin: 0;
-    }
-  </style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Find Happy Lauris</title>
+    <style>
+        /* Basic Reset & Canvas Styling */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #475659; /* Set body to DARK_COLOR */
+        }
+        canvas {
+            display: block; /* Remove extra space below canvas */
+            width: 100%;
+            height: 100%;
+            background-color: #769062; /* Set canvas to GRASS_COLOR */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // --- Constants ---
+        const DARKER_COLOR = "#3B3C41";
+        const DARK_COLOR = "#475659";
+        const GREEN_COLOR = "#358C3B";
+        const YELLOW_COLOR = "#FFFFB4";
+        const GRASS_COLOR = "#769062";
+        const LIGHT_COLOR = "#F3F1F2";
+        const ERROR_COLOR = "#8C2A3C";
+        const FONT_FAMILY = "'Helvetica Neue', Helvetica, Arial, sans-serif"; // Standard safe font stack
+
+        const MAX_LEVEL = 6;
+        const START_SCREEN_DELAY = 300; // ms delay after clicking Play
+        const LEVEL_TRANSITION_DELAY = 1000; // ms delay after finding Lauris or timeout
+        const FINISH_SCREEN_ANIM_DURATION = 2000; // ms for trophy animation
+
+        // --- Asset Management ---
+        const assets = {
+            images: {},
+            total: 0,
+            loaded: 0,
+            allLoaded: false,
+            error: false
+        };
+
+        // !! IMPORTANT: Update these arrays based on your actual image files !!
+        const HAPPY_LAURIS_COUNT = 3; // How many happy_lauris_*.jpg files do you have?
+        const RANDOM_FACE_COUNT = 10; // How many random_face_*.jpg files do you have?
+
+        const ASSET_PATHS = [
+            'assets/trophy.png',
+            'assets/stopwatch.png',
+            ...Array.from({ length: HAPPY_LAURIS_COUNT }, (_, i) => `assets/faces/happy/happy_lauris_${i + 1}.jpg`),
+            ...Array.from({ length: RANDOM_FACE_COUNT }, (_, i) => `assets/faces/random/random_face_${i + 1}.jpg`),
+        ];
+
+        function loadAssets(callback) {
+            assets.total = ASSET_PATHS.length;
+            if (assets.total === 0) {
+                assets.allLoaded = true;
+                if (callback) callback();
+                return;
+            }
+
+            ASSET_PATHS.forEach(path => {
+                const img = new Image();
+                img.onload = () => {
+                    assets.loaded++;
+                    // console.log(`Loaded: ${path} (${assets.loaded}/${assets.total})`);
+                    if (assets.loaded === assets.total) {
+                        assets.allLoaded = true;
+                        console.log("All assets loaded.");
+                        if (callback) callback();
+                    }
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load asset: ${path}`);
+                    assets.error = true;
+                    assets.loaded++; // Still count it to potentially proceed
+                    if (assets.loaded === assets.total) {
+                        assets.allLoaded = true; // Allow game start, but might have missing images
+                        if (callback) callback();
+                    }
+                };
+                assets.images[path] = img;
+                img.src = path;
+            });
+        }
+
+        // --- Utility Functions ---
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function isPointInRect(x, y, rect) {
+            return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+        }
+
+        // --- Game Class ---
+        class Game {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) {
+                    throw new Error(`Canvas element with id "${canvasId}" not found.`);
+                }
+                this.ctx = this.canvas.getContext('2d');
+                if (!this.ctx) {
+                    throw new Error("Could not get 2D rendering context.");
+                }
+
+                this.stageIndex = 0; // 0: Start, 1-6: Levels, 7: Finish
+                this.currentStage = null;
+                this.lastTime = 0;
+                this.deltaTime = 0;
+
+                // Input state
+                this.input = {
+                    x: 0,
+                    y: 0,
+                    isDown: false,
+                    triggered: false // Flag for single activation per touch/click
+                };
+
+                // Pre-bind methods to maintain 'this' context
+                this.loop = this.loop.bind(this);
+                this.handleResize = this.handleResize.bind(this);
+                this.handleInputStart = this.handleInputStart.bind(this);
+                this.handleInputEnd = this.handleInputEnd.bind(this);
+                this.handleInputMove = this.handleInputMove.bind(this); // For hover effects if needed
+
+                this.init();
+            }
+
+            init() {
+                console.log("Initializing Game...");
+                this.setupCanvas();
+                this.addEventListeners();
+                loadAssets(() => {
+                    if (assets.error) {
+                        console.warn("Proceeding with asset loading errors.");
+                        // Optionally display an error message on canvas
+                    }
+                    this.setStage(0); // Go to Start Screen
+                    this.lastTime = performance.now();
+                    this.loop(); // Start game loop only after assets attempt loading
+                });
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                  // Disable image smoothing for potentially sharper pixel art / icons
+                  this.ctx.imageSmoothingEnabled = true;
+                  // Set common baseline and alignment
+                  this.ctx.textBaseline = 'middle';
+                  this.ctx.textAlign = 'center';
+            }
+
+            addEventListeners() {
+                window.addEventListener('resize', this.handleResize);
+
+                // Mobile Touch Events
+                this.canvas.addEventListener('touchstart', this.handleInputStart, { passive: false });
+                this.canvas.addEventListener('touchend', this.handleInputEnd, { passive: false });
+                this.canvas.addEventListener('touchcancel', this.handleInputEnd, { passive: false }); // Treat cancel like end
+                this.canvas.addEventListener('touchmove', this.handleInputMove, { passive: false }); // Optional for dragging/hover
+
+                // Desktop Mouse Events
+                this.canvas.addEventListener('mousedown', this.handleInputStart, { passive: false });
+                this.canvas.addEventListener('mouseup', this.handleInputEnd, { passive: false });
+                this.canvas.addEventListener('mouseleave', this.handleInputEnd, { passive: false }); // Treat leave like end
+                this.canvas.addEventListener('mousemove', this.handleInputMove, { passive: false }); // Optional for hover
+            }
+
+            removeEventListeners() { // Good practice for cleanup if the game were part of a larger SPA
+                window.removeEventListener('resize', this.handleResize);
+                this.canvas.removeEventListener('touchstart', this.handleInputStart);
+                this.canvas.removeEventListener('touchend', this.handleInputEnd);
+                this.canvas.removeEventListener('touchcancel', this.handleInputEnd);
+                this.canvas.removeEventListener('touchmove', this.handleInputMove);
+                this.canvas.removeEventListener('mousedown', this.handleInputStart);
+                this.canvas.removeEventListener('mouseup', this.handleInputEnd);
+                this.canvas.removeEventListener('mouseleave', this.handleInputEnd);
+                this.canvas.removeEventListener('mousemove', this.handleInputMove);
+            }
+
+            // --- Input Handling ---
+            _updateInputCoords(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                let clientX, clientY;
+
+                if (event.touches && event.touches.length > 0) {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                } else if (event.changedTouches && event.changedTouches.length > 0) {
+                    // Use changedTouches for touchend/touchcancel
+                      clientX = event.changedTouches[0].clientX;
+                      clientY = event.changedTouches[0].clientY;
+                } else {
+                    clientX = event.clientX;
+                    clientY = event.clientY;
+                }
+
+                // Account for canvas scaling if CSS size differs from attribute size
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+
+                this.input.x = (clientX - rect.left) * scaleX;
+                this.input.y = (clientY - rect.top) * scaleY;
+            }
+
+            handleInputStart(event) {
+                event.preventDefault(); // Prevent scrolling/zooming
+                this._updateInputCoords(event);
+                this.input.isDown = true;
+                this.input.triggered = false; // Reset trigger flag on new press
+                // console.log("Input Start:", this.input.x, this.input.y);
+                if (this.currentStage && this.currentStage.handleInputStart) {
+                    this.currentStage.handleInputStart(this.input.x, this.input.y);
+                }
+            }
+
+            handleInputEnd(event) {
+                event.preventDefault();
+                if (!this.input.isDown) return; // Only process if was previously down
+
+                this._updateInputCoords(event);
+                this.input.isDown = false;
+
+                  // Only trigger the action if it wasn't already triggered during this press sequence
+                if (!this.input.triggered) {
+                    // console.log("Input End (Triggered):", this.input.x, this.input.y);
+                    if (this.currentStage && this.currentStage.handleInput) {
+                        this.currentStage.handleInput(this.input.x, this.input.y);
+                        this.input.triggered = true; // Mark as triggered
+                    }
+                } else {
+                      // console.log("Input End (Already Triggered):", this.input.x, this.input.y);
+                }
+
+                if (this.currentStage && this.currentStage.handleInputEnd) {
+                    this.currentStage.handleInputEnd(this.input.x, this.input.y);
+                }
+            }
+
+            handleInputMove(event) {
+                event.preventDefault();
+                  this._updateInputCoords(event);
+                // Pass move events for potential hover effects or dragging
+                if (this.currentStage && this.currentStage.handleInputMove) {
+                    this.currentStage.handleInputMove(this.input.x, this.input.y, this.input.isDown);
+                }
+            }
+            // --- End Input Handling ---
+
+
+            handleResize() {
+                console.log("Resizing window...");
+                this.setupCanvas();
+                // Notify the current stage to recalculate layout
+                if (this.currentStage && this.currentStage.resize) {
+                    this.currentStage.resize(this.canvas.width, this.canvas.height);
+                }
+                  // Force redraw on resize
+                  if (this.currentStage && this.currentStage.draw) {
+                    this.currentStage.draw(this.ctx, 0); // Draw immediately with 0 delta
+                }
+            }
+
+            setStage(stageIndex) {
+                console.log(`Setting stage to: ${stageIndex}`);
+                this.stageIndex = stageIndex;
+                // Lazy instantiation of stages
+                switch (this.stageIndex) {
+                    case 0:
+                        this.currentStage = new Start(this, this.canvas.width, this.canvas.height);
+                        break;
+                    case 7:
+                        this.currentStage = new Finish(this, this.canvas.width, this.canvas.height);
+                        break;
+                    default: // Levels 1-6
+                        if (this.stageIndex >= 1 && this.stageIndex <= MAX_LEVEL) {
+                            this.currentStage = new Level(this, this.stageIndex, this.canvas.width, this.canvas.height);
+                        } else {
+                            console.error(`Invalid stage index: ${stageIndex}. Resetting to Start.`);
+                            this.currentStage = new Start(this, this.canvas.width, this.canvas.height);
+                            this.stageIndex = 0;
+                        }
+                        break;
+                }
+                  // Ensure new stage calculates its layout immediately
+                  if (this.currentStage && this.currentStage.resize) {
+                    this.currentStage.resize(this.canvas.width, this.canvas.height);
+                }
+            }
+
+            getCurrentStageObject() {
+                return this.currentStage;
+            }
+
+            reset() {
+                console.log("Resetting game...");
+                this.setStage(0);
+            }
+
+            loop(timestamp) {
+                if (!timestamp) timestamp = performance.now(); // Fallback for first frame
+                this.deltaTime = (timestamp - this.lastTime) / 1000.0; // Delta time in seconds
+                this.lastTime = timestamp;
+
+                // Clamp deltaTime to prevent large jumps (e.g., tab backgrounding)
+                this.deltaTime = Math.min(this.deltaTime, 0.1); // Max delta 100ms (10fps)
+
+                // Clear canvas
+                this.ctx.fillStyle = GRASS_COLOR; // Use GRASS_COLOR for canvas background
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (!assets.allLoaded) {
+                    // Display loading message
+                    this.ctx.fillStyle = LIGHT_COLOR;
+                    this.ctx.font = "24px " + FONT_FAMILY;
+                    this.ctx.fillText(`Loading Assets... ${assets.loaded}/${assets.total}`, this.canvas.width / 2, this.canvas.height / 2);
+                    if (assets.error) {
+                          this.ctx.fillStyle = ERROR_COLOR;
+                          this.ctx.fillText("Some assets failed to load!", this.canvas.width / 2, this.canvas.height / 2 + 40);
+                    }
+                } else if (this.currentStage) {
+                    // Update logic first
+                    if (this.currentStage.update) {
+                        this.currentStage.update(this.deltaTime);
+                    }
+                    // Then draw
+                    if (this.currentStage.draw) {
+                        this.currentStage.draw(this.ctx, this.deltaTime);
+                    }
+                }
+
+                requestAnimationFrame(this.loop);
+            }
+        }
+
+        // --- Start Screen Class ---
+        class Start {
+            constructor(game, width, height) {
+                this.game = game;
+                this.laurisImage = null;
+                this.imagePos = { x: 0, y: 0, size: 0, angle: 0, bounceY: 0, bounceSpeed: 100 };
+                this.playButtonRect = { x: 0, y: 0, w: 0, h: 0 };
+                this.isHoveringButton = false; // For mouse hover feedback
+                this.isPressingButton = false; // For touch/mouse press feedback
+                this.selectRandomLauris();
+                this.resize(width, height);
+            }
+
+            selectRandomLauris() {
+                const happyKeys = Object.keys(assets.images).filter(k => k.includes('happy_lauris'));
+                if (happyKeys.length > 0) {
+                    const randomKey = happyKeys[getRandomInt(0, happyKeys.length - 1)];
+                    this.laurisImage = assets.images[randomKey];
+                } else {
+                      console.warn("No happy Lauris images found for start screen.");
+                }
+            }
+
+            resize(width, height) {
+                this.width = width;
+                this.height = height;
+
+                // Image size and position (responsive)
+                this.imagePos.size = Math.min(width * 0.4, height * 0.4, 250); // Max size 250px
+                this.imagePos.x = width / 2;
+                this.imagePos.y = height * 0.35; // Position slightly above center
+                this.imagePos.bounceY = 0; // Reset bounce
+
+                // Play button layout
+                const buttonWidth = Math.min(width * 0.6, 250);
+                const buttonHeight = Math.min(height * 0.1, 60);
+                this.playButtonRect.w = buttonWidth;
+                this.playButtonRect.h = buttonHeight;
+                this.playButtonRect.x = (width - buttonWidth) / 2;
+                this.playButtonRect.y = height * 0.7;
+            }
+
+              updateBounce(deltaTime) {
+                const bounceAmount = this.imagePos.size * 0.05; // Bounce 5% of size
+                this.imagePos.bounceY += this.imagePos.bounceSpeed * deltaTime;
+                  if (this.imagePos.bounceY > bounceAmount || this.imagePos.bounceY < -bounceAmount) {
+                      this.imagePos.bounceSpeed *= -1; // Reverse direction
+                      this.imagePos.bounceY = Math.sign(this.imagePos.bounceY) * bounceAmount; // Clamp to limit
+                  }
+            }
+
+            draw(ctx, deltaTime) {
+                this.updateBounce(deltaTime);
+
+                // Draw Title
+                const titleFontSize = Math.min(this.width * 0.1, 60);
+                ctx.font = `bold ${titleFontSize}px ${FONT_FAMILY}`;
+                ctx.fillStyle = LIGHT_COLOR;
+                ctx.fillText("Find Happy Lauris", this.width / 2, this.height * 0.15);
+
+                // Draw Bouncing Lauris Image
+                if (this.laurisImage && this.laurisImage.complete && this.laurisImage.naturalWidth > 0) {
+                    ctx.save(); // Save context state
+                    ctx.translate(this.imagePos.x, this.imagePos.y + this.imagePos.bounceY);
+                    // ctx.rotate(this.imagePos.angle); // Optional rotation
+                    ctx.drawImage(
+                        this.laurisImage,
+                        -this.imagePos.size / 2, // Center the image
+                        -this.imagePos.size / 2,
+                        this.imagePos.size,
+                        this.imagePos.size
+                    );
+                    ctx.restore(); // Restore context state
+                } else {
+                    // Fallback if image isn't loaded/valid
+                    ctx.fillStyle = DARKER_COLOR;
+                    ctx.fillRect(this.imagePos.x - this.imagePos.size / 2, this.imagePos.y - this.imagePos.size / 2, this.imagePos.size, this.imagePos.size);
+                      ctx.fillStyle = LIGHT_COLOR;
+                    ctx.font = "16px " + FONT_FAMILY;
+                    ctx.fillText("Lauris?", this.imagePos.x, this.imagePos.y);
+                }
+
+
+                // Draw Play Button
+                const buttonFontSize = Math.min(this.playButtonRect.h * 0.5, 30);
+                  ctx.font = `bold ${buttonFontSize}px ${FONT_FAMILY}`;
+
+                // Determine button color based on interaction state
+                if (this.isPressingButton) {
+                    ctx.fillStyle = GREEN_COLOR; // Darker green when pressed
+                    ctx.strokeStyle = YELLOW_COLOR;
+                } else if (this.isHoveringButton) {
+                    ctx.fillStyle = GRASS_COLOR; // Lighter green on hover (mouse only)
+                      ctx.strokeStyle = LIGHT_COLOR;
+                } else {
+                    ctx.fillStyle = GREEN_COLOR;
+                      ctx.strokeStyle = DARK_COLOR; // Default border
+                }
+
+                // Draw button background
+                ctx.lineWidth = 2;
+                ctx.fillRect(this.playButtonRect.x, this.playButtonRect.y, this.playButtonRect.w, this.playButtonRect.h);
+                ctx.strokeRect(this.playButtonRect.x, this.playButtonRect.y, this.playButtonRect.w, this.playButtonRect.h);
+
+                // Draw button text
+                ctx.fillStyle = this.isPressingButton ? YELLOW_COLOR : LIGHT_COLOR; // Text color changes on press
+                ctx.fillText("PLAY", this.width / 2, this.playButtonRect.y + this.playButtonRect.h / 2); // Vertically center text
+
+            }
+
+            handleInputStart(x, y) {
+                if (isPointInRect(x, y, this.playButtonRect)) {
+                    this.isPressingButton = true;
+                }
+            }
+
+              handleInputEnd(x, y) {
+                  // Check if the release point is still within the button bounds *and* the button was being pressed
+                  if (this.isPressingButton && isPointInRect(x, y, this.playButtonRect)) {
+                    console.log("Play button activated!");
+                    this.isPressingButton = false; // Reset press state visually
+                    // Start game after a short delay for visual feedback
+                    setTimeout(() => {
+                        this.game.setStage(1);
+                    }, START_SCREEN_DELAY);
+                } else {
+                    this.isPressingButton = false; // Reset press state if released outside or wasn't pressed
+                }
+              }
+
+              handleInputMove(x, y, isDown) {
+                  // Update hover state only if the input is NOT currently down (mouse hover)
+                this.isHoveringButton = !isDown && isPointInRect(x, y, this.playButtonRect);
+              }
+
+              // No handleInput method needed as action happens on InputEnd
+        }
+
+
+        // --- Level Screen Class ---
+        class Level {
+            constructor(game, levelNumber, width, height) {
+                this.game = game;
+                this.levelNumber = levelNumber;
+                this.grid = { cols: 0, rows: 0 };
+                this.faces = []; // { img, x, y, size, isTarget }
+                this.targetFace = null;
+                this.layout = null; // Cached layout { faceSize, gridRect, headerY, timerY }
+
+                this.timer = {
+                    totalTime: 0,
+                    timeLeft: 0,
+                    enabled: levelNumber > 1, // Timer starts from level 2
+                    barWidth: 0,
+                    stopwatchIcon: assets.images['assets/stopwatch.png']
+                };
+
+                this.state = 'playing'; // 'playing', 'success', 'fail'
+                this.stateTimer = 0; // Timer for showing success/fail message
+
+                this.happyLaurisImages = Object.values(assets.images).filter(img => img.src.includes('happy_lauris'));
+                this.randomFaceImages = Object.values(assets.images).filter(img => img.src.includes('random_face'));
+
+                this.setupLevel();
+                this.resize(width, height);
+            }
+
+            setupLevel() {
+                // Determine grid size based on level (Increased difficulty, vertical emphasis)
+                // L1: 3x3 -> 3x3 (no change)
+                // L2: 4x3 -> 3x4
+                // L3: 4x4 -> 4x4 (no change)
+                // L4: 5x4 -> 4x5
+                // L5: 5x5 -> 5x5 (no change)
+                // L6: 6x5 -> 5x6
+                if (this.levelNumber === 1) { this.grid = { cols: 3, rows: 3 }; this.timer.totalTime = 8; } // Timer still disabled, but set value
+                else if (this.levelNumber === 2) { this.grid = { cols: 3, rows: 4 }; this.timer.totalTime = 7; } // Was 4x3
+                else if (this.levelNumber === 3) { this.grid = { cols: 4, rows: 5 }; this.timer.totalTime = 8; } // Was 4x4
+                else if (this.levelNumber === 4) { this.grid = { cols: 5, rows: 6 }; this.timer.totalTime = 10; } // Was 5x4
+                else if (this.levelNumber === 5) { this.grid = { cols: 6, rows: 7 }; this.timer.totalTime = 10; } // Was 5x5
+                else { this.grid = { cols: 7, rows: 8 }; this.timer.totalTime = 10; } // Level 6+, Was 6x5
+
+                this.timer.timeLeft = this.timer.totalTime;
+
+                // Prepare faces
+                const totalFaces = this.grid.cols * this.grid.rows;
+                this.faces = [];
+                const targetIndex = getRandomInt(0, totalFaces - 1);
+
+                // Ensure we have images to use
+                if (this.happyLaurisImages.length === 0) console.error("Missing Happy Lauris images!");
+                if (this.randomFaceImages.length === 0) console.error("Missing Random Face images!");
+
+                for (let i = 0; i < totalFaces; i++) {
+                    const isTarget = (i === targetIndex);
+                    let img;
+                    if (isTarget) {
+                        img = this.happyLaurisImages[getRandomInt(0, this.happyLaurisImages.length - 1)];
+                    } else {
+                        img = this.randomFaceImages[getRandomInt(0, this.randomFaceImages.length - 1)];
+                    }
+                    const faceData = { img: img, x: 0, y: 0, size: 0, isTarget: isTarget, index: i };
+                    this.faces.push(faceData);
+                    if (isTarget) {
+                        this.targetFace = faceData;
+                    }
+                }
+                if (!this.targetFace) console.error("Failed to set target face!"); // Should not happen
+            }
+
+            // Calculate and cache layout based on current dimensions
+            calculateLayout(width, height) {
+                const padding = Math.min(width, height) * 0.05; // 5% padding around grid
+                const headerHeight = height * 0.1;
+                const timerHeight = this.timer.enabled ? height * 0.1 : 0;
+                const availableHeight = height - headerHeight - timerHeight - padding * 2;
+                const availableWidth = width - padding * 2;
+
+                // Calculate face size based on limiting dimension
+                const sizePerCol = availableWidth / this.grid.cols;
+                const sizePerRow = availableHeight / this.grid.rows;
+                const faceSize = Math.min(sizePerCol, sizePerRow) * 0.85; // 85% of cell size for spacing
+                const spacingX = (availableWidth - faceSize * this.grid.cols) / (this.grid.cols + 1);
+                const spacingY = (availableHeight - faceSize * this.grid.rows) / (this.grid.rows + 1);
+
+                const gridStartY = headerHeight + timerHeight + padding;
+                const gridStartX = padding;
+
+                // Update positions in the faces array
+                let faceIndex = 0;
+                for (let r = 0; r < this.grid.rows; r++) {
+                    for (let c = 0; c < this.grid.cols; c++) {
+                        if(faceIndex < this.faces.length) {
+                            const face = this.faces[faceIndex];
+                            face.x = gridStartX + spacingX + c * (faceSize + spacingX);
+                            face.y = gridStartY + spacingY + r * (faceSize + spacingY);
+                            face.size = faceSize;
+                            faceIndex++;
+                        }
+                    }
+                }
+
+                  // Cache important layout numbers
+                  this.layout = {
+                      faceSize: faceSize,
+                      gridRect: { x: gridStartX, y: gridStartY, w: availableWidth, h: availableHeight },
+                      headerY: headerHeight * 0.5, // Center vertically
+                      timerY: headerHeight + timerHeight * 0.5,
+                      timerBarY: headerHeight + timerHeight * 0.1,
+                      timerBarHeight: timerHeight * 0.8,
+                      timerBarWidth: width * 0.6, // Max timer bar width
+                      timerIconSize: timerHeight * 0.7
+                  };
+                  this.layout.timerBarX = (width - this.layout.timerBarWidth) / 2;
+            }
+
+            resize(width, height) {
+                this.width = width;
+                this.height = height;
+                this.calculateLayout(width, height);
+            }
+
+            update(deltaTime) {
+                if (this.state === 'playing' && this.timer.enabled) {
+                    this.timer.timeLeft -= deltaTime;
+                    if (this.timer.timeLeft <= 0) {
+                        this.timer.timeLeft = 0;
+                        this.state = 'fail';
+                        this.stateTimer = LEVEL_TRANSITION_DELAY / 1000; // Show fail message for delay duration
+                        console.log(`Level ${this.levelNumber} Failed (Timeout)`);
+                          setTimeout(() => this.game.reset(), LEVEL_TRANSITION_DELAY); // Go back to start on fail
+                    }
+                } else if (this.state === 'success' || this.state === 'fail') {
+                    this.stateTimer -= deltaTime;
+                    // Transition already handled by setTimeout in handleInput or timer check
+                }
+            }
+
+            draw(ctx, deltaTime) {
+                  if (!this.layout) return; // Don't draw if layout not calculated
+
+                // Draw Level Header
+                const headerFontSize = Math.min(this.width * 0.06, 40);
+                ctx.font = `bold ${headerFontSize}px ${FONT_FAMILY}`;
+                ctx.fillStyle = LIGHT_COLOR;
+                ctx.fillText(`Level ${this.levelNumber}`, this.width / 2, this.layout.headerY);
+
+                // Draw Timer (if enabled)
+                if (this.timer.enabled && this.layout.timerY > 0) {
+                      const timerProgress = this.timer.timeLeft / this.timer.totalTime;
+                      const currentBarWidth = this.layout.timerBarWidth * timerProgress;
+
+                      // Draw Timer Bar Background
+                      ctx.fillStyle = DARKER_COLOR;
+                      ctx.fillRect(this.layout.timerBarX, this.layout.timerBarY, this.layout.timerBarWidth, this.layout.timerBarHeight);
+
+                      // Draw Timer Bar Foreground
+                      ctx.fillStyle = timerProgress > 0.5 ? GREEN_COLOR : (timerProgress > 0.2 ? YELLOW_COLOR : ERROR_COLOR);
+                      ctx.fillRect(this.layout.timerBarX, this.layout.timerBarY, currentBarWidth, this.layout.timerBarHeight);
+
+                    // Draw Stopwatch Icon
+                    if (this.timer.stopwatchIcon && this.timer.stopwatchIcon.complete) {
+                        const iconX = this.layout.timerBarX - this.layout.timerIconSize - 10; // Position left of bar
+                        ctx.drawImage(
+                            this.timer.stopwatchIcon,
+                            iconX,
+                            this.layout.timerBarY + (this.layout.timerBarHeight - this.layout.timerIconSize) / 2, // Center vertically
+                            this.layout.timerIconSize,
+                            this.layout.timerIconSize
+                        );
+                    }
+                }
+
+                // Draw Faces Grid
+                this.faces.forEach(face => {
+                    if (face.img && face.img.complete && face.img.naturalWidth > 0) {
+                        ctx.drawImage(face.img, face.x, face.y, face.size, face.size);
+
+                          // DEBUG: Outline target face
+                          // if (face.isTarget) {
+                          //     ctx.strokeStyle = 'red';
+                          //     ctx.lineWidth = 2;
+                          //     ctx.strokeRect(face.x, face.y, face.size, face.size);
+                          // }
+                    } else {
+                        // Fallback placeholder
+                        ctx.fillStyle = DARKER_COLOR;
+                        ctx.fillRect(face.x, face.y, face.size, face.size);
+                    }
+                });
+
+                // Draw Success/Fail Overlay (Hint)
+                if (this.state === 'success' || this.state === 'fail') {
+                    // Semi-transparent background overlay
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                    ctx.fillRect(0, 0, this.width, this.height);
+
+                    const message = this.state === 'success' ? "You Found Him!" : "Time's Up!";
+                    const color = this.state === 'success' ? GREEN_COLOR : ERROR_COLOR;
+                    const overlayFontSize = Math.min(this.width * 0.08, 50);
+                    ctx.font = `bold ${overlayFontSize}px ${FONT_FAMILY}`;
+                    ctx.fillStyle = color;
+                    ctx.fillText(message, this.width / 2, this.height / 2);
+
+                    // Optionally show the target face image larger on success/fail
+                    if (this.targetFace && this.targetFace.img && this.targetFace.img.complete) {
+                          const hintImageSize = this.layout.faceSize * 1.5;
+                          ctx.drawImage(
+                              this.targetFace.img,
+                              this.width / 2 - hintImageSize / 2,
+                              this.height / 2 + overlayFontSize, // Below text
+                              hintImageSize, hintImageSize
+                          );
+                          // Highlight border
+                          ctx.strokeStyle = color;
+                          ctx.lineWidth = 4;
+                          ctx.strokeRect(
+                              this.width / 2 - hintImageSize / 2,
+                              this.height / 2 + overlayFontSize,
+                              hintImageSize, hintImageSize
+                          );
+                    }
+                }
+            }
+
+            handleInput(x, y) {
+                if (this.state !== 'playing') return; // Ignore input if not playing
+
+                // Check if input hits the target face
+                const target = this.targetFace;
+                const padding = this.layout.faceSize * 0.1; // 10% padding for easier clicks
+                const targetRect = {
+                    x: target.x - padding,
+                    y: target.y - padding,
+                    w: target.size + padding * 2,
+                    h: target.size + padding * 2
+                };
+
+                if (isPointInRect(x, y, targetRect)) {
+                    console.log(`Level ${this.levelNumber} Success!`);
+                    this.state = 'success';
+                    this.stateTimer = LEVEL_TRANSITION_DELAY / 1000; // Show success message
+
+                    // Proceed to next level or finish screen after delay
+                    setTimeout(() => {
+                        if (this.levelNumber < MAX_LEVEL) {
+                            this.game.setStage(this.levelNumber + 1);
+                        } else {
+                            this.game.setStage(7); // Go to Finish Screen
+                        }
+                    }, LEVEL_TRANSITION_DELAY);
+                } else {
+                    // Optional: Add feedback for wrong clicks (e.g., small screen shake, sound)
+                      console.log("Wrong face clicked.");
+                }
+            }
+        }
+
+        // --- Finish Screen Class ---
+        class Finish {
+            constructor(game, width, height) {
+                this.game = game;
+                this.trophyImage = assets.images['assets/trophy.png'];
+                this.animation = {
+                    count: 0, // Timer for animation progress
+                    duration: FINISH_SCREEN_ANIM_DURATION / 1000, // seconds
+                    trophyBaseSize: 0,
+                    trophyMaxSize: 0,
+                    trophyX: 0,
+                    trophyY: 0,
+                };
+                  this.containerRect = { x: 0, y: 0, w: 0, h: 0 };
+                  this.playAgainButtonRect = { x: 0, y: 0, w: 0, h: 0 };
+                  this.isHoveringButton = false;
+                  this.isPressingButton = false;
+
+                this.resize(width, height);
+            }
+
+            resize(width, height) {
+                this.width = width;
+                this.height = height;
+
+                // Container box layout
+                  const boxWidth = Math.min(width * 0.8, 500);
+                  const boxHeight = Math.min(height * 0.7, 600);
+                  this.containerRect.w = boxWidth;
+                  this.containerRect.h = boxHeight;
+                  this.containerRect.x = (width - boxWidth) / 2;
+                  this.containerRect.y = (height - boxHeight) / 2;
+
+                // Trophy animation parameters
+                this.animation.trophyMaxSize = Math.min(boxWidth * 0.6, boxHeight * 0.5, 300);
+                this.animation.trophyBaseSize = this.animation.trophyMaxSize * 0.1; // Start small
+                this.animation.trophyX = width / 2;
+                this.animation.trophyY = this.containerRect.y + boxHeight * 0.4; // Position in upper-middle
+
+                  // Play Again button layout (inside container)
+                const buttonWidth = Math.min(boxWidth * 0.7, 200);
+                const buttonHeight = Math.min(boxHeight * 0.15, 50);
+                this.playAgainButtonRect.w = buttonWidth;
+                this.playAgainButtonRect.h = buttonHeight;
+                this.playAgainButtonRect.x = (width - buttonWidth) / 2; // Center horizontally
+                this.playAgainButtonRect.y = this.containerRect.y + boxHeight * 0.8 - buttonHeight / 2; // Near bottom
+            }
+
+            update(deltaTime) {
+                // Animate trophy size (e.g., scale up and bounce slightly)
+                if (this.animation.count < this.animation.duration) {
+                    this.animation.count += deltaTime;
+                }
+            }
+
+            draw(ctx, deltaTime) {
+                // Draw semi-transparent background overlay
+                ctx.fillStyle = "rgba(40, 40, 40, 0.85)";
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // Draw container box
+                ctx.fillStyle = DARK_COLOR;
+                ctx.strokeStyle = YELLOW_COLOR;
+                ctx.lineWidth = 4;
+                ctx.fillRect(this.containerRect.x, this.containerRect.y, this.containerRect.w, this.containerRect.h);
+                ctx.strokeRect(this.containerRect.x, this.containerRect.y, this.containerRect.w, this.containerRect.h);
+
+
+                // Draw Trophy with animation
+                  const progress = Math.min(this.animation.count / this.animation.duration, 1);
+                // Simple scale-up animation (can add bounce/easing)
+                const easeOutQuad = t => t * (2 - t); // Example easing function
+                const easedProgress = easeOutQuad(progress);
+                const currentTrophySize = this.animation.trophyBaseSize + (this.animation.trophyMaxSize - this.animation.trophyBaseSize) * easedProgress;
+
+                if (this.trophyImage && this.trophyImage.complete && this.trophyImage.naturalWidth > 0) {
+                      ctx.drawImage(
+                          this.trophyImage,
+                          this.animation.trophyX - currentTrophySize / 2,
+                          this.animation.trophyY - currentTrophySize / 2,
+                          currentTrophySize,
+                          currentTrophySize
+                      );
+                } else {
+                      // Fallback if trophy image missing
+                      ctx.fillStyle = YELLOW_COLOR;
+                      ctx.font = "20px " + FONT_FAMILY;
+                      ctx.fillText("🏆", this.animation.trophyX, this.animation.trophyY);
+                }
+
+                // Draw Text (appears after trophy animation starts)
+                const titleFontSize = Math.min(this.containerRect.w * 0.1, 45);
+                const subFontSize = Math.min(this.containerRect.w * 0.07, 28);
+                ctx.fillStyle = LIGHT_COLOR;
+
+                if (progress > 0.1) { // Start showing text shortly after animation begins
+                    ctx.font = `bold ${titleFontSize}px ${FONT_FAMILY}`;
+                    ctx.fillText("Congratulations!", this.width / 2, this.containerRect.y + this.containerRect.h * 0.15);
+                }
+                  if (progress > 0.4) {
+                      ctx.font = `${subFontSize}px ${FONT_FAMILY}`;
+                      ctx.fillText("You found all the Happy Lauris!", this.width / 2, this.containerRect.y + this.containerRect.h * 0.65);
+                  }
+
+                  // Draw Play Again Button (show when animation is mostly done)
+                  if (progress > 0.8) {
+                      const buttonFontSize = Math.min(this.playAgainButtonRect.h * 0.5, 24);
+                      ctx.font = `bold ${buttonFontSize}px ${FONT_FAMILY}`;
+
+                    // Determine button color based on interaction state
+                    if (this.isPressingButton) {
+                        ctx.fillStyle = GREEN_COLOR;
+                        ctx.strokeStyle = YELLOW_COLOR;
+                    } else if (this.isHoveringButton) {
+                        ctx.fillStyle = GRASS_COLOR;
+                        ctx.strokeStyle = LIGHT_COLOR;
+                    } else {
+                        ctx.fillStyle = GREEN_COLOR;
+                        ctx.strokeStyle = DARK_COLOR;
+                    }
+
+                    // Draw button background
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(this.playAgainButtonRect.x, this.playAgainButtonRect.y, this.playAgainButtonRect.w, this.playAgainButtonRect.h);
+                    ctx.strokeRect(this.playAgainButtonRect.x, this.playAgainButtonRect.y, this.playAgainButtonRect.w, this.playAgainButtonRect.h);
+
+                    // Draw button text
+                    ctx.fillStyle = this.isPressingButton ? YELLOW_COLOR : LIGHT_COLOR;
+                    ctx.fillText("PLAY AGAIN", this.width / 2, this.playAgainButtonRect.y + this.playAgainButtonRect.h / 2);
+                  }
+            }
+
+            handleInputStart(x, y) {
+                  if (this.animation.count >= this.animation.duration * 0.8 && isPointInRect(x, y, this.playAgainButtonRect)) {
+                    this.isPressingButton = true;
+                }
+            }
+
+              handleInputEnd(x, y) {
+                  if (this.isPressingButton && isPointInRect(x, y, this.playAgainButtonRect)) {
+                      console.log("Play Again button activated!");
+                      this.isPressingButton = false;
+                      this.game.reset(); // Reset the game to the start screen
+                  } else {
+                      this.isPressingButton = false;
+                  }
+              }
+
+              handleInputMove(x, y, isDown) {
+                  // Update hover state only if the button is visible and input is not down
+                  if (this.animation.count >= this.animation.duration * 0.8) {
+                      this.isHoveringButton = !isDown && isPointInRect(x, y, this.playAgainButtonRect);
+                  } else {
+                      this.isHoveringButton = false;
+                  }
+              }
+
+              // No handleInput needed as action happens on InputEnd
+        }
+
+
+        // --- Game Initialization ---
+        window.addEventListener('load', () => {
+            console.log("Window loaded. Starting game setup.");
+            const game = new Game('gameCanvas');
+            // The game initialization (including asset loading and loop start)
+            // is handled within the Game class constructor.
+        });
+
+    </script>
+</body>
 </html>
