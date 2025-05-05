@@ -450,6 +450,12 @@
                 const buttonFontSize = Math.min(this.playButtonRect.h * 0.5, 30);
                   ctx.font = `bold ${buttonFontSize}px ${FONT_FAMILY}`;
 
+                // Button Shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+
                 // Determine button color based on interaction state
                 if (this.isPressingButton) {
                     ctx.fillStyle = GREEN_COLOR; // Darker green when pressed
@@ -466,6 +472,12 @@
                 ctx.lineWidth = 2;
                 ctx.fillRect(this.playButtonRect.x, this.playButtonRect.y, this.playButtonRect.w, this.playButtonRect.h);
                 ctx.strokeRect(this.playButtonRect.x, this.playButtonRect.y, this.playButtonRect.w, this.playButtonRect.h);
+
+                // Reset shadow for other elements
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
 
                 // Draw button text
                 ctx.fillStyle = this.isPressingButton ? YELLOW_COLOR : LIGHT_COLOR; // Text color changes on press
@@ -522,6 +534,8 @@
 
                 this.state = 'playing'; // 'playing', 'success', 'fail'
                 this.stateTimer = 0; // Timer for showing success/fail message
+                this.foundAnimTimer = 0; // Timer for the 'found' pulse animation
+                this.foundAnimDuration = LEVEL_TRANSITION_DELAY / 1000; // Duration matches transition
 
                 this.happyLaurisImages = Object.values(assets.images).filter(img => img.src.includes('happy_lauris'));
                 this.randomFaceImages = Object.values(assets.images).filter(img => img.src.includes('random_face'));
@@ -539,12 +553,12 @@
                 // L4: 5x4 -> 4x5
                 // L5: 5x5 -> 5x5 (no change)
                 // L6: 6x5 -> 5x6
-                if (this.levelNumber === 1) { this.grid = { cols: 3, rows: 3 }; this.timer.totalTime = 8; } // Timer still disabled, but set value
-                else if (this.levelNumber === 2) { this.grid = { cols: 3, rows: 4 }; this.timer.totalTime = 7; } // Was 4x3
-                else if (this.levelNumber === 3) { this.grid = { cols: 4, rows: 5 }; this.timer.totalTime = 8; } // Was 4x4
-                else if (this.levelNumber === 4) { this.grid = { cols: 5, rows: 6 }; this.timer.totalTime = 10; } // Was 5x4
-                else if (this.levelNumber === 5) { this.grid = { cols: 6, rows: 7 }; this.timer.totalTime = 10; } // Was 5x5
-                else { this.grid = { cols: 7, rows: 8 }; this.timer.totalTime = 10; } // Level 6+, Was 6x5
+                if (this.levelNumber === 1) { this.grid = { cols: 3, rows: 3 }; this.timer.totalTime = 4; } // Timer still disabled, but set value
+                else if (this.levelNumber === 2) { this.grid = { cols: 3, rows: 4 }; this.timer.totalTime = 5; } // Was 4x3
+                else if (this.levelNumber === 3) { this.grid = { cols: 4, rows: 5 }; this.timer.totalTime = 5; } // Was 4x4
+                else if (this.levelNumber === 4) { this.grid = { cols: 5, rows: 6 }; this.timer.totalTime = 6; } // Was 5x4
+                else if (this.levelNumber === 5) { this.grid = { cols: 6, rows: 7 }; this.timer.totalTime = 6; } // Was 5x5
+                else { this.grid = { cols: 7, rows: 8 }; this.timer.totalTime = 6; } // Level 6+, Was 6x5
 
                 this.timer.timeLeft = this.timer.totalTime;
 
@@ -638,7 +652,10 @@
                     }
                 } else if (this.state === 'success' || this.state === 'fail') {
                     this.stateTimer -= deltaTime;
-                    // Transition already handled by setTimeout in handleInput or timer check
+                    // Pulse animation timer also counts down when success state is active
+                    if (this.state === 'success') {
+                        this.foundAnimTimer = Math.max(0, this.foundAnimTimer - deltaTime);
+                    }
                 }
             }
 
@@ -695,13 +712,36 @@
                     }
                 });
 
+                // --- Draw Found Animation Pulse ---
+                if (this.state === 'success' && this.targetFace && this.foundAnimTimer > 0) {
+                    const pulseProgress = 1 - (this.foundAnimTimer / this.foundAnimDuration); // 0 to 1
+                    // Simple sine wave for pulsing scale (e.g., 1.0 to 1.1 and back)
+                    const scaleMultiplier = 1.0 + Math.sin(pulseProgress * Math.PI * 2) * 0.05; // Pulse scale by 5%
+                    const pulseSize = this.targetFace.size * scaleMultiplier;
+                    const pulseX = this.targetFace.x + (this.targetFace.size - pulseSize) / 2;
+                    const pulseY = this.targetFace.y + (this.targetFace.size - pulseSize) / 2;
+
+                    if (this.targetFace.img && this.targetFace.img.complete) {
+                        ctx.save();
+                        ctx.globalAlpha = 1.0; // Ensure it's fully visible during pulse
+                        ctx.drawImage(this.targetFace.img, pulseX, pulseY, pulseSize, pulseSize);
+                        // Optional: Add a highlight border during pulse
+                        ctx.strokeStyle = YELLOW_COLOR;
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(pulseX, pulseY, pulseSize, pulseSize);
+                        ctx.restore();
+                    }
+                }
+                // --- End Found Animation Pulse ---
+
                 // Draw Success/Fail Overlay (Hint)
-                if (this.state === 'success' || this.state === 'fail') {
+                // Delay overlay slightly to let pulse animation start
+                if ((this.state === 'success' || this.state === 'fail') && this.stateTimer < (LEVEL_TRANSITION_DELAY / 1000) * 0.9) {
                     // Semi-transparent background overlay
                     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
                     ctx.fillRect(0, 0, this.width, this.height);
 
-                    const message = this.state === 'success' ? "You Found Him!" : "Time's Up!";
+                    const message = this.state === 'success' ? "You Found Him!" : "Time's Up!"; // Updated success text
                     const color = this.state === 'success' ? GREEN_COLOR : ERROR_COLOR;
                     const overlayFontSize = Math.min(this.width * 0.08, 50);
                     ctx.font = `bold ${overlayFontSize}px ${FONT_FAMILY}`;
@@ -746,6 +786,7 @@
                     console.log(`Level ${this.levelNumber} Success!`);
                     this.state = 'success';
                     this.stateTimer = LEVEL_TRANSITION_DELAY / 1000; // Show success message
+                    this.foundAnimTimer = this.foundAnimDuration; // Start the pulse animation timer
 
                     // Proceed to next level or finish screen after delay
                     setTimeout(() => {
