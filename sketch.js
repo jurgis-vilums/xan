@@ -2,9 +2,6 @@ let currentTouch;
 let centerX;
 let centerY;
 let game;
-let start;
-let level;
-let finish;
 let isMobile;
 
 let darker;
@@ -83,14 +80,7 @@ function setup() {
   error = color("#8C2A3C");
   currentTouch = new Touch();
   start = new Start();
-  level6 = new Level(6);
-  level5 = new Level(5);
-  level4 = new Level(4);
-  level3 = new Level(3);
-  level2 = new Level(2);
-  level1 = new Level(1);
   game = new Game();
-  finish = new Finish();
   frameRate(isMobile ? 30 : 60); // Higher target framerate, but we'll use deltaTime for animations
   lastFrameTime = millis();
   createCanvas(windowWidth, windowHeight);
@@ -103,32 +93,10 @@ function draw() {
   lastFrameTime = currentTime;
   
   background(grass);
-  // level1.hint();
-  // level5.timer();
-  // level6.run();
-  // finish.run();
-  switch (game.getStage()) {
-    case 0:
-      start.run();
-      break;
-    case 1:
-      level1.run();
-      break;
-    case 2:
-      level2.run();
-      break;
-    case 3:
-      level3.run();
-      break;
-    case 4:
-      level4.run();
-      break;
-    case 5:
-      level5.run();
-      break;
-    case 6:
-      level6.run();
-      break;
+  // Get the current level object from the game and run it
+  const currentLevel = game.getCurrentLevel();
+  if (currentLevel && typeof currentLevel.run === 'function') {
+    currentLevel.run();
   }
 }
 
@@ -168,28 +136,7 @@ function windowResized() {
   centerX = windowWidth / 2;
   centerY = windowHeight / 2;
   
-  // Recreate current level/stage to adjust sizes
-  switch (game.getStage()) {
-    case 0:
-      start = new Start();
-      break;
-    case 1:
-      level1 = new Level(1);
-      break;
-    case 2:
-      level2 = new Level(2);
-      break;
-    case 3:
-      level3 = new Level(3);
-      break;
-    case 4:
-      level4 = new Level(4);
-      break;
-    case 5:
-      level5 = new Level(5);
-      break;
-    case 6:
-      level6 = new Level(6);
-      break;
-  }
+  // Force re-initialization of the current level within the Game class
+  // This will create a new instance with updated dimensions if needed
+  game.initializeLevel(game.getStage());
 }

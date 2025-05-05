@@ -112,6 +112,10 @@ class Level {
           this.count = 0;
           this.succeeded = false;
         }, 3000);
+      } else if (this.level === this.lastLevel) {
+        setTimeout(() => {
+          game.setStage(7);
+        }, 3000);
       }
     } else if (this.count < this.time) {
       this.targetFaceListener();
@@ -180,52 +184,48 @@ class Level {
     );
   }
   hint() {
-    if (this.level === this.lastLevel && this.succeeded) {
-      finish.run();
-    } else {
-      strokeWeight(5);
-      stroke(light);
-      fill(dark);
-      rect(
-        centerX - 350,
-        centerY - 300,
-        700,
-        !this.succeeded || this.level === 1 ? 380 : 300,
-        50
-      );
-      imageMode(CENTER);
-      image(
-        this.succeeded ? this.targetLauris : randomFaces[0],
+    strokeWeight(5);
+    stroke(light);
+    fill(dark);
+    rect(
+      centerX - 350,
+      centerY - 300,
+      700,
+      !this.succeeded || this.level === 1 ? 380 : 300,
+      50
+    );
+    imageMode(CENTER);
+    image(
+      this.succeeded ? this.targetLauris : randomFaces[0],
+      centerX,
+      centerY - 200,
+      100,
+      100
+    );
+    textFont(headingFont);
+    textAlign(CENTER, CENTER);
+    noStroke();
+    fill(light);
+    textSize(60);
+    if (this.level === 1) {
+      text(
+        this.succeeded ? "Great! Now for" : "That's not Lauris!",
         centerX,
-        centerY - 200,
-        100,
-        100
+        centerY - 100
       );
-      textFont(headingFont);
-      textAlign(CENTER, CENTER);
-      noStroke();
-      fill(light);
-      textSize(60);
-      if (this.level === 1) {
-        text(
-          this.succeeded ? "Great! Now for" : "That's not Lauris!",
-          centerX,
-          centerY - 100
-        );
-        text(
-          this.succeeded ? "the challenge!" : "Keep looking!",
-          centerX,
-          centerY - 20
-        );
-      } else {
-        text(
-          this.succeeded
-            ? succeededCopy[this.level - 2]
-            : failedCopy[this.level - 2],
-          centerX,
-          centerY - 100
-        );
-      }
+      text(
+        this.succeeded ? "the challenge!" : "Keep looking!",
+        centerX,
+        centerY - 20
+      );
+    } else {
+      text(
+        this.succeeded
+          ? succeededCopy[this.level - 2]
+          : failedCopy[this.level - 2],
+        centerX,
+        centerY - 100
+      );
     }
   }
 }

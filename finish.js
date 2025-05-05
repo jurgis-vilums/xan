@@ -1,8 +1,8 @@
 class Finish {
   constructor() {
     this.count = 0;
-    this.smileFaces = [];
   }
+
   run() {
     //overlay
     noStroke();
@@ -53,36 +53,6 @@ class Finish {
       text("LAURIS!", centerX, textBaseY + 80);
     }
 
-    //smile faces
-    if (this.count > fr * 3 && this.count < fr * 10 && this.count % 2 === 0)
-      this.smileFaces.push(new SmileFace());
-    for (var i = 0; i < this.smileFaces.length; i++) {
-      this.smileFaces[i].show();
-    }
     this.count += 1; 
-  }
-}
-
-class SmileFace {
-  constructor() {
-    // Initialize simple physics properties without Matter.js
-    this.x = int(random(20, windowWidth - 20));
-    this.y = 0;
-    this.size = 80;
-    this.vy = 0;
-    this.gravity = 0.6;
-  }
-
-  show() {
-    // Update position based on simple physics
-    this.vy += this.gravity;
-    this.y += this.vy;
-    // Prevent falling through the bottom with bounce effect
-    if (this.y + this.size / 2 > windowHeight) {
-      this.y = windowHeight - this.size / 2;
-      this.vy *= -0.4;
-    }
-    imageMode(CENTER);
-    image(smilingFace, this.x, this.y, this.size, this.size);
   }
 }
