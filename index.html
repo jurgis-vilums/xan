@@ -553,12 +553,12 @@
                 // L4: 5x4 -> 4x5
                 // L5: 5x5 -> 5x5 (no change)
                 // L6: 6x5 -> 5x6
-                if (this.levelNumber === 1) { this.grid = { cols: 3, rows: 3 }; this.timer.totalTime = 4; } // Timer still disabled, but set value
-                else if (this.levelNumber === 2) { this.grid = { cols: 3, rows: 4 }; this.timer.totalTime = 5; } // Was 4x3
-                else if (this.levelNumber === 3) { this.grid = { cols: 4, rows: 5 }; this.timer.totalTime = 5; } // Was 4x4
-                else if (this.levelNumber === 4) { this.grid = { cols: 5, rows: 6 }; this.timer.totalTime = 6; } // Was 5x4
-                else if (this.levelNumber === 5) { this.grid = { cols: 6, rows: 7 }; this.timer.totalTime = 6; } // Was 5x5
-                else { this.grid = { cols: 7, rows: 8 }; this.timer.totalTime = 6; } // Level 6+, Was 6x5
+                if (this.levelNumber === 1) { this.grid = { cols: 3, rows: 4 }; this.timer.totalTime = 4; } // Timer still disabled, but set value
+                else if (this.levelNumber === 2) { this.grid = { cols: 4, rows: 5 }; this.timer.totalTime = 5; } // Was 4x3
+                else if (this.levelNumber === 3) { this.grid = { cols: 5, rows: 6 }; this.timer.totalTime = 5; } // Was 4x4
+                else if (this.levelNumber === 4) { this.grid = { cols: 6, rows: 7 }; this.timer.totalTime = 5; } // Was 5x4
+                else if (this.levelNumber === 5) { this.grid = { cols: 7, rows: 8 }; this.timer.totalTime = 5; } // Was 5x5
+                else { this.grid = { cols: 8, rows: 9 }; this.timer.totalTime = 6; } // Level 6+, Was 6x5
 
                 this.timer.timeLeft = this.timer.totalTime;
 
