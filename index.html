@@ -54,7 +54,7 @@
         };
 
         // !! IMPORTANT: Update these arrays based on your actual image files !!
-        const HAPPY_LAURIS_COUNT = 3; // How many happy_lauris_*.jpg files do you have?
+        const HAPPY_LAURIS_COUNT = 13; // How many happy_lauris_*.jpg files do you have?
         const RANDOM_FACE_COUNT = 10; // How many random_face_*.jpg files do you have?
 
         const ASSET_PATHS = [
@@ -356,10 +356,14 @@
             constructor(game, width, height) {
                 this.game = game;
                 this.laurisImage = null;
-                this.imagePos = { x: 0, y: 0, size: 0, angle: 0, bounceY: 0, bounceSpeed: 100 };
+                this.imagePos = { x: 0, y: 50, size: 0, angle: 0, bounceY: 0, bounceSpeed: 20 }; // Reduced bounce speed
                 this.playButtonRect = { x: 0, y: 0, w: 0, h: 0 };
                 this.isHoveringButton = false; // For mouse hover feedback
                 this.isPressingButton = false; // For touch/mouse press feedback
+
+                this.changeImageInterval = 3.0; // Change image every 3 seconds
+                this.changeImageTimer = this.changeImageInterval;
+
                 this.selectRandomLauris();
                 this.resize(width, height);
             }
@@ -393,17 +397,25 @@
                 this.playButtonRect.y = height * 0.7;
             }
 
-              updateBounce(deltaTime) {
+            update(deltaTime) { // Added update method
+                // Update bounce
                 const bounceAmount = this.imagePos.size * 0.05; // Bounce 5% of size
                 this.imagePos.bounceY += this.imagePos.bounceSpeed * deltaTime;
                   if (this.imagePos.bounceY > bounceAmount || this.imagePos.bounceY < -bounceAmount) {
                       this.imagePos.bounceSpeed *= -1; // Reverse direction
                       this.imagePos.bounceY = Math.sign(this.imagePos.bounceY) * bounceAmount; // Clamp to limit
                   }
+
+                // Update image change timer
+                this.changeImageTimer -= deltaTime;
+                if (this.changeImageTimer <= 0) {
+                    this.selectRandomLauris();
+                    this.changeImageTimer = this.changeImageInterval;
+                }
             }
 
             draw(ctx, deltaTime) {
-                this.updateBounce(deltaTime);
+                // Bounce update moved to update()
 
                 // Draw Title
                 const titleFontSize = Math.min(this.width * 0.1, 60);
@@ -513,6 +525,7 @@
 
                 this.happyLaurisImages = Object.values(assets.images).filter(img => img.src.includes('happy_lauris'));
                 this.randomFaceImages = Object.values(assets.images).filter(img => img.src.includes('random_face'));
+                console.log(`Level ${levelNumber}: Found ${this.randomFaceImages.length} random face images.`); // Added log
 
                 this.setupLevel();
                 this.resize(width, height);
